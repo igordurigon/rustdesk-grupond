@@ -12,6 +12,7 @@ env:
   RUST_VERSION: "1.75"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  VCPKG_ROOT: 'C:\tools\vcpkg'
 
 jobs:
   build-windows:
@@ -57,10 +58,8 @@ jobs:
       - name: Install dependencies (vcpkg)
         shell: pwsh
         run: |
-          # Use pre-installed vcpkg in GitHub Runner
-          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
-          cd $env:VCPKG_INSTALLATION_ROOT
-          ./vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
+          cd $env:VCPKG_ROOT
+          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
 
       - name: Build
         shell: pwsh
