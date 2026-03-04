@@ -64,20 +64,26 @@ enum SettingsTabKey {
 class DesktopSettingPage extends StatefulWidget {
   final SettingsTabKey initialTabkey;
   static final List<SettingsTabKey> tabKeys = [
-    SettingsTabKey.general,
+    if (!bind.isDisableSettings()) SettingsTabKey.general,
     if (!isWeb &&
         !bind.isOutgoingOnly() &&
-        !bind.isDisableSettings() &&
+        (!bind.isDisableSettings() || bind.isIncomingOnly()) &&
         bind.mainGetBuildinOption(key: kOptionHideSecuritySetting) != 'Y')
       SettingsTabKey.safety,
     if (!bind.isDisableSettings() &&
         bind.mainGetBuildinOption(key: kOptionHideNetworkSetting) != 'Y')
       SettingsTabKey.network,
-    if (!bind.isIncomingOnly()) SettingsTabKey.display,
-    if (!isWeb && !bind.isIncomingOnly() && bind.pluginFeatureIsEnabled())
+    if (!bind.isIncomingOnly() && !bind.isDisableSettings())
+      SettingsTabKey.display,
+    if (!isWeb &&
+        !bind.isIncomingOnly() &&
+        bind.pluginFeatureIsEnabled() &&
+        !bind.isDisableSettings())
       SettingsTabKey.plugin,
-    if (!bind.isDisableAccount()) SettingsTabKey.account,
+    if (!bind.isDisableAccount() && !bind.isDisableSettings())
+      SettingsTabKey.account,
     if (isWindows &&
+        !bind.isDisableSettings() &&
         bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
       SettingsTabKey.printer,
     SettingsTabKey.about,

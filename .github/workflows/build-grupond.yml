@@ -1,0 +1,79 @@
+name: Build GrupoND Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      rs_server:
+        description: 'Endereço do Servidor ID/Relay (ex: rustdesk.grupond.com.br)'
+        required: true
+        default: 'SEU_IP_OU_DOMINIO'
+
+env:
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+
+jobs:
+  build-windows:
+    name: Build Windows Versions
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [client, admin]
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Environment Variables for ${{ matrix.version }}
+        shell: pwsh
+        run: |
+          if ("${{ matrix.version }}" -eq "client") {
+            echo "APP_NAME=Atendimento GrupoND" >> $env:GITHUB_ENV
+            echo "RS_INCOMING_ONLY=1" >> $env:GITHUB_ENV
+            echo "RS_DISABLE_SETTINGS=1" >> $env:GITHUB_ENV
+            echo "OUTPUT_NAME=Atendimento_GrupoND" >> $env:GITHUB_ENV
+          } else {
+            echo "APP_NAME=Admin GrupoND" >> $env:GITHUB_ENV
+            echo "RS_HIDE_NETWORK=1" >> $env:GITHUB_ENV
+            echo "OUTPUT_NAME=Admin_GrupoND" >> $env:GITHUB_ENV
+          }
+          echo "RS_SERVER=${{ github.event.inputs.rs_server }}" >> $env:GITHUB_ENV
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          target: x86_64-pc-windows-msvc
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies (vcpkg)
+        run: |
+          git clone https://github.com/microsoft/vcpkg $env:VCPKG_INSTALLATION_ROOT
+          cd $env:VCPKG_INSTALLATION_ROOT
+          git checkout ${{ env.VCPKG_COMMIT_ID }}
+          .\bootstrap-vcpkg.bat
+
+      - name: Build
+        shell: pwsh
+        run: |
+          # Aqui rodamos o script de build original do RustDesk que agora
+          # respeita as variáveis de ambiente que modificamos.
+          python build.py
+
+      - name: Rename and Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUTPUT_NAME }}
+          path: |
+            target/release/*.exe
+            flutter/build/windows/x64/runner/Release/*.exe
