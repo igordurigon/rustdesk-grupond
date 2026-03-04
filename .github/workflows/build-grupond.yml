@@ -55,11 +55,12 @@ jobs:
           cache: true
 
       - name: Install dependencies (vcpkg)
+        shell: pwsh
         run: |
-          git clone https://github.com/microsoft/vcpkg $env:VCPKG_INSTALLATION_ROOT
+          # Use pre-installed vcpkg in GitHub Runner
+          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
           cd $env:VCPKG_INSTALLATION_ROOT
-          git checkout ${{ env.VCPKG_COMMIT_ID }}
-          .\bootstrap-vcpkg.bat
+          ./vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
 
       - name: Build
         shell: pwsh
