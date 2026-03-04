@@ -12,7 +12,6 @@ env:
   RUST_VERSION: "1.75"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  VCPKG_ROOT: 'C:\tools\vcpkg'
 
 jobs:
   build-windows:
@@ -27,9 +26,12 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Set Environment Variables for ${{ matrix.version }}
+      - name: Set Environment Variables
         shell: pwsh
         run: |
+          # Define VCPKG_ROOT based on runner's pre-installed path
+          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
+          
           if ("${{ matrix.version }}" -eq "client") {
             echo "APP_NAME=Atendimento GrupoND" >> $env:GITHUB_ENV
             echo "RS_INCOMING_ONLY=1" >> $env:GITHUB_ENV
@@ -58,14 +60,14 @@ jobs:
       - name: Install dependencies (vcpkg)
         shell: pwsh
         run: |
-          cd $env:VCPKG_ROOT
+          cd $env:VCPKG_INSTALLATION_ROOT
           ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
 
       - name: Build
         shell: pwsh
         run: |
-          # Aqui rodamos o script de build original do RustDesk que agora
-          # respeita as variáveis de ambiente que modificamos.
+          # Export VCPKG_ROOT explicitly for the python script and cargo
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
           python build.py
 
       - name: Rename and Upload Artifact
