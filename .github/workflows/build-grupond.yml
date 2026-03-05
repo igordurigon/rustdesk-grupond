@@ -21,6 +21,8 @@ jobs:
       VCPKG_ROOT: "C:/vcpkg"
       VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
       VCPKG_ALLOW_TRIPLET_MISMATCH: "1"
+      # Injeta flags de compilador para MSVC (cl.exe) para resolver erros de exceção C++ no hwcodec
+      CL: "/EHsc /d2FH4-"
     strategy:
       fail-fast: false
       matrix:
@@ -73,8 +75,8 @@ jobs:
         shell: pwsh
         run: |
           cd C:\vcpkg
-          # Install dependencies with explicit features for ffmpeg
-          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale]:x64-windows-static
+          # Install dependencies with explicit features for ffmpeg including hardware acceleration
+          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv]:x64-windows-static
           ./vcpkg.exe integrate install
 
       - name: Build
