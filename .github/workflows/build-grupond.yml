@@ -17,6 +17,10 @@ jobs:
   build-windows:
     name: Build Windows Versions
     runs-on: windows-2022
+    env:
+      VCPKG_ROOT: "C:/vcpkg"
+      VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
+      VCPKG_ALLOW_TRIPLET_MISMATCH: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -29,20 +33,17 @@ jobs:
       - name: Set Environment Variables
         shell: pwsh
         run: |
-          # Define VCPKG_ROOT based on runner's pre-installed path
-          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
-          
           if ("${{ matrix.version }}" -eq "client") {
-            echo "APP_NAME=Atendimento GrupoND" >> $env:GITHUB_ENV
-            echo "RS_INCOMING_ONLY=1" >> $env:GITHUB_ENV
-            echo "RS_DISABLE_SETTINGS=1" >> $env:GITHUB_ENV
-            echo "OUTPUT_NAME=Atendimento_GrupoND" >> $env:GITHUB_ENV
+            "APP_NAME=Atendimento GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "RS_INCOMING_ONLY=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "RS_DISABLE_SETTINGS=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "OUTPUT_NAME=Atendimento_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           } else {
-            echo "APP_NAME=Admin GrupoND" >> $env:GITHUB_ENV
-            echo "RS_HIDE_NETWORK=1" >> $env:GITHUB_ENV
-            echo "OUTPUT_NAME=Admin_GrupoND" >> $env:GITHUB_ENV
+            "APP_NAME=Admin GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "RS_HIDE_NETWORK=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "OUTPUT_NAME=Admin_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           }
-          echo "RS_SERVER=${{ github.event.inputs.rs_server }}" >> $env:GITHUB_ENV
+          "RS_SERVER=${{ github.event.inputs.rs_server }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
