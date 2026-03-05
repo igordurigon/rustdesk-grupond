@@ -506,9 +506,18 @@ def main():
                 'target\\release\\rustdesk.exe')
         else:
             print('Not signed')
-        os.makedirs(res_dir, exist_ok=True)
-        system2(
-            f'cp -rf target/release/RustDesk.exe {res_dir}')
+        
+        # Robust way to ensure resources is a clean directory
+        res_path = os.path.join(os.getcwd(), res_dir)
+        if os.path.exists(res_path):
+            if os.path.isfile(res_path):
+                os.remove(res_path)
+            else:
+                shutil.rmtree(res_path)
+        os.makedirs(res_path, exist_ok=True)
+
+        shutil.copy2('target/release/RustDesk.exe', os.path.join(res_path, 'RustDesk.exe'))
+        
         os.chdir('libs/portable')
         system2('pip3 install -r requirements.txt')
         system2(
