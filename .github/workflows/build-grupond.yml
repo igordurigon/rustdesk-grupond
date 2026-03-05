@@ -71,10 +71,10 @@ jobs:
       - name: Setup vcpkg
         shell: pwsh
         run: |
-          # The Windows 2022 runner has vcpkg in C:\vcpkg by default.
-          # We just need to make sure the binaries are installed.
           cd C:\vcpkg
-          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
+          # Install necessary dependencies including ffmpeg for hwcodec
+          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static ffmpeg:x64-windows-static
+          ./vcpkg.exe integrate install
 
       - name: Build
         shell: pwsh
