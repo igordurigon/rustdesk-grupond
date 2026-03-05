@@ -60,6 +60,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           target: x86_64-pc-windows-msvc
+          components: rustfmt
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -72,8 +73,8 @@ jobs:
         shell: pwsh
         run: |
           cd C:\vcpkg
-          # Install necessary dependencies including ffmpeg for hwcodec
-          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static ffmpeg:x64-windows-static
+          # Install dependencies with explicit features for ffmpeg
+          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale]:x64-windows-static
           ./vcpkg.exe integrate install
 
       - name: Build
