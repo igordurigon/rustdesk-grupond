@@ -38,16 +38,22 @@ jobs:
             "RS_INCOMING_ONLY=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "RS_DISABLE_SETTINGS=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "OUTPUT_NAME=Atendimento_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            # Change name in Cargo.toml
-            (Get-Content Cargo.toml) -replace 'name = "rustdesk"', 'name = "atendimento-grupond"' | Set-Content Cargo.toml
+            $slug = "atendimento-grupond"
           } else {
             "APP_NAME=Admin GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "RS_HIDE_NETWORK=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "OUTPUT_NAME=Admin_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            # Change name in Cargo.toml
-            (Get-Content Cargo.toml) -replace 'name = "rustdesk"', 'name = "admin-grupond"' | Set-Content Cargo.toml
+            $slug = "admin-grupond"
           }
           "RS_SERVER=${{ github.event.inputs.rs_server }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          
+          # Update Cargo.toml
+          (Get-Content Cargo.toml) -replace 'name = "rustdesk"', ('name = "' + $slug + '"') `
+                                   -replace 'default-run = "rustdesk"', ('default-run = "' + $slug + '"') | Set-Content Cargo.toml
+          
+          # Add explicit bin target to Cargo.toml to ensure the renamed package builds a binary
+          $binSection = "`n[[bin]]`nname = `"$slug`"`npath = `"src/main.rs`"`n"
+          Add-Content -Path Cargo.toml -Value $binSection
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
