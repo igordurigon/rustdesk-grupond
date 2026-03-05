@@ -38,10 +38,14 @@ jobs:
             "RS_INCOMING_ONLY=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "RS_DISABLE_SETTINGS=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "OUTPUT_NAME=Atendimento_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            # Change name in Cargo.toml
+            (Get-Content Cargo.toml) -replace 'name = "rustdesk"', 'name = "atendimento-grupond"' | Set-Content Cargo.toml
           } else {
             "APP_NAME=Admin GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "RS_HIDE_NETWORK=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "OUTPUT_NAME=Admin_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            # Change name in Cargo.toml
+            (Get-Content Cargo.toml) -replace 'name = "rustdesk"', 'name = "admin-grupond"' | Set-Content Cargo.toml
           }
           "RS_SERVER=${{ github.event.inputs.rs_server }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
@@ -69,12 +73,18 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
+          # Sync name in Flutter
+          (Get-Content flutter/pubspec.yaml) -replace 'name: rustdesk', ('name: ' + "${{ env.OUTPUT_NAME }}".ToLower().Replace('_', '-')) | Set-Content flutter/pubspec.yaml
+          
           # Compila a versão personalizada com Flutter e gera o executável portátil (Single EXE)
           python build.py --flutter --hwcodec --portable
+          
+          # Rename the final executable
+          Get-ChildItem -Filter "rustdesk-*-install.exe" | Rename-Item -NewName "${{ env.OUTPUT_NAME }}_Setup.exe"
 
       - name: Rename and Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.OUTPUT_NAME }}
           path: |
-            rustdesk-*-install.exe
+            ${{ env.OUTPUT_NAME }}_Setup.exe
