@@ -484,7 +484,7 @@ def main():
     if package:
         build_deb_from_folder(version, package)
         return
-    res_dir = 'resources'
+    res_dir = 'portable_res'
     external_resources(flutter, args, res_dir)
     if windows:
         # build virtual display dynamic library
@@ -507,8 +507,10 @@ def main():
         else:
             print('Not signed')
         
-        # Robust way to ensure resources is a clean directory
-        res_path = os.path.join(os.getcwd(), res_dir)
+        # Robust way to ensure portable_res is a clean directory
+        base_dir = os.getcwd()
+        res_path = os.path.normpath(os.path.join(base_dir, res_dir))
+        print(f"DEBUG: Creating directory at {res_path}")
         if os.path.exists(res_path):
             if os.path.isfile(res_path):
                 os.remove(res_path)
@@ -516,13 +518,23 @@ def main():
                 shutil.rmtree(res_path)
         os.makedirs(res_path, exist_ok=True)
 
-        shutil.copy2('target/release/RustDesk.exe', os.path.join(res_path, 'RustDesk.exe'))
+        target_exe = os.path.join(res_path, 'RustDesk.exe')
+        print(f"DEBUG: Copying to {target_exe}")
+        shutil.copy2('target/release/RustDesk.exe', target_exe)
         
+        print(f"DEBUG: Directory content of {res_path}: {os.listdir(res_path)}")
+
         os.chdir('libs/portable')
         system2('pip3 install -r requirements.txt')
-        system2(
-            f'python3 ./generate.py -f ../../{res_dir} -o . -e ../../{res_dir}/rustdesk-{version}-win7-install.exe')
-        system2('mv ../../{res_dir}/rustdesk-{version}-win7-install.exe ../..')
+        
+        exe_name = f'rustdesk-{version}-win7-install.exe'
+        abs_exe_path = os.path.normpath(os.path.join(res_path, exe_name))
+        
+        print(f"DEBUG: Calling generate.py with folder={res_path} and exe={abs_exe_path}")
+        system2(f'python3 ./generate.py -f "{res_path}" -o . -e "{abs_exe_path}"')
+        
+        if os.path.exists(abs_exe_path):
+            shutil.move(abs_exe_path, os.path.join(base_dir, exe_name))
     elif os.path.isfile('/usr/bin/pacman'):
         # pacman -S -needed base-devel
         system2("sed -i 's/pkgver=.*/pkgver=%s/g' res/PKGBUILD" % version)
