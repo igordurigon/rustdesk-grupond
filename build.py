@@ -506,6 +506,7 @@ def main():
                 'target\\release\\rustdesk.exe')
         else:
             print('Not signed')
+        os.makedirs(res_dir, exist_ok=True)
         system2(
             f'cp -rf target/release/RustDesk.exe {res_dir}')
         os.chdir('libs/portable')
