@@ -69,12 +69,12 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          python build.py
+          # Compila a versão personalizada com Flutter e gera o executável portátil (Single EXE)
+          python build.py --flutter --hwcodec --portable
 
       - name: Rename and Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.OUTPUT_NAME }}
           path: |
-            target/release/*.exe
-            flutter/build/windows/x64/runner/Release/*.exe
+            rustdesk-*-install.exe
