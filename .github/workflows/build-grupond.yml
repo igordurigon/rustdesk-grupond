@@ -76,15 +76,16 @@ jobs:
       - name: Setup vcpkg
         shell: pwsh
         run: |
-          # Rodar vcpkg install de dentro do workspace para usar o vcpkg.json (Manifest Mode)
-          # Isso criará a pasta vcpkg_installed na raiz do projeto
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch
+          # Desabilita o Modo Manifesto renomeando o arquivo vcpkg.json
+          if (Test-Path "vcpkg.json") { Rename-Item "vcpkg.json" "vcpkg.json.bak" }
           
-          # Integração para o MSVC
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" integrate install
+          cd $env:VCPKG_INSTALLATION_ROOT
+          # Instala as dependências no modo clássico (direto no VCPKG_ROOT)
+          ./vcpkg.exe install --triplet x64-windows-static --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch
+          ./vcpkg.exe integrate install
           
-          # No Manifest Mode, os headers ficam no workspace
-          $vcpkgInstalled = "${{ github.workspace }}/vcpkg_installed/x64-windows-static"
+          # No modo clássico, os arquivos ficam na pasta installed do vcpkg
+          $vcpkgInstalled = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static"
           Add-Content -Path $env:GITHUB_ENV -Value "INCLUDE=$vcpkgInstalled/include"
           Add-Content -Path $env:GITHUB_ENV -Value "LIB=$vcpkgInstalled/lib"
           Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT"
@@ -92,24 +93,18 @@ jobs:
       - name: Verify vcpkg headers
         shell: pwsh
         run: |
-          $headerPath = "${{ github.workspace }}/vcpkg_installed/x64-windows-static/include/libavcodec/avcodec.h"
+          $headerPath = "$env:INCLUDE/libavcodec/avcodec.h"
           Write-Host "Checking header at: $headerPath"
           if (Test-Path $headerPath) {
-            Write-Host "SUCCESS: FFmpeg headers found in workspace!"
+            Write-Host "SUCCESS: FFmpeg headers found!"
           } else {
-            Write-Host "ERROR: FFmpeg headers NOT found in workspace!"
-            Write-Host "Checking traditional location just in case..."
-            $altPath = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include/libavcodec/avcodec.h"
-            if (Test-Path $altPath) {
-               Write-Host "Found in traditional location: $altPath"
-               Add-Content -Path $env:GITHUB_ENV -Value "INCLUDE=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/include"
-               Add-Content -Path $env:GITHUB_ENV -Value "LIB=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/lib"
-            } else {
-               Write-Host "Searching everywhere..."
-               Get-ChildItem -Path ${{ github.workspace }} -Recurse -Filter "avcodec.h" -ErrorAction SilentlyContinue
-               exit 1
-            }
+            Write-Host "ERROR: FFmpeg headers NOT found!"
+            Get-ChildItem -Path $env:VCPKG_INSTALLATION_ROOT -Recurse -Filter "avcodec.h" -ErrorAction SilentlyContinue
+            exit 1
           }
+          
+          # Restaura o vcpkg.json para não sujar o repo
+          if (Test-Path "vcpkg.json.bak") { Rename-Item "vcpkg.json.bak" "vcpkg.json" }
 
       - name: Build
         shell: pwsh
