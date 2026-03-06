@@ -76,35 +76,33 @@ jobs:
       - name: Setup vcpkg
         shell: pwsh
         run: |
-          # Define diretório local para dependências
-          $installRoot = "${{ github.workspace }}/vcpkg_dep"
+          # Novo diretório para forçar cache bust
+          $installRoot = "${{ github.workspace }}/vcpkg_new"
           if (!(Test-Path $installRoot)) { New-Item -ItemType Directory -Path $installRoot }
           
-          # Ignora o vcpkg.json para garantir instalação clássica controlada
           if (Test-Path "vcpkg.json") { Rename-Item "vcpkg.json" "vcpkg.json.bak" }
           
           cd $env:VCPKG_INSTALLATION_ROOT
-          Write-Host "Iniciando instalação do vcpkg em $installRoot..."
           
-          # Instala as dependências usando apenas as features válidas do port customizado
-          ./vcpkg.exe install --triplet x64-windows-static --x-install-root="$installRoot" --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch
+          # COMANDO SIMPLIFICADO E CORRIGIDO
+          $vcpkgCmd = "./vcpkg.exe install --triplet x64-windows-static --x-install-root=`"$installRoot`" --overlay-ports=`"${{ github.workspace }}/res/vcpkg`" libvpx libyuv opus aom ffmpeg[amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch"
+          
+          Write-Host "EXECUTANDO: $vcpkgCmd"
+          Invoke-Expression $vcpkgCmd
           
           ./vcpkg.exe integrate install
           
-          # Localiza onde os arquivos foram parar
+          # Localiza headers
           $ffmpegHeader = Get-ChildItem -Path $installRoot -Recurse -Filter "avcodec.h" | Select-Object -First 1
           if ($ffmpegHeader) {
-            # O caminho geralmente é .../installed/x64-windows-static/include/libavcodec/avcodec.h
             $includePath = $ffmpegHeader.Directory.Parent.FullName
             $libPath = $ffmpegHeader.Directory.Parent.Parent.FullName + "/lib"
-            
             Write-Host "SUCCESS: Encontrado FFmpeg em $includePath"
             Add-Content -Path $env:GITHUB_ENV -Value "INCLUDE=$includePath"
             Add-Content -Path $env:GITHUB_ENV -Value "LIB=$libPath"
             Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT"
           } else {
-            Write-Host "ERROR: Não foi possível localizar os headers do FFmpeg após a instalação!"
-            # Debug: Lista toda a estrutura para ver o que foi instalado
+            Write-Host "ERROR: Headers não encontrados!"
             Get-ChildItem -Path $installRoot -Recurse | Select-Object FullName
             exit 1
           }
