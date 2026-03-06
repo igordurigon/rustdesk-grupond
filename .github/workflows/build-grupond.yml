@@ -18,12 +18,8 @@ jobs:
     name: Build Windows Versions
     runs-on: windows-2022
     env:
-      VCPKG_ROOT: 'C:\vcpkg'
       VCPKG_DEFAULT_TRIPLET: 'x64-windows-static'
       VCPKG_ALLOW_TRIPLET_MISMATCH: "1"
-      # Injeta caminhos de busca para o compilador C++ (cl.exe)
-      INCLUDE: 'C:\vcpkg\installed\x64-windows-static\include'
-      LIB: 'C:\vcpkg\installed\x64-windows-static\lib'
       # Flags para resolver erros de exceção C++ no hwcodec
       CL: "/EHsc /d2FH4-"
     strategy:
@@ -52,6 +48,9 @@ jobs:
           }
           Add-Content -Path $env:GITHUB_ENV -Value "RS_SERVER=${{ github.event.inputs.rs_server }}"
           
+          # Define VCPKG_ROOT dinamicamente
+          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT"
+          
           # Update Cargo.toml
           (Get-Content Cargo.toml) -replace 'name = "rustdesk"', ('name = "' + $slug + '"') `
                                    -replace 'default-run = "rustdesk"', ('default-run = "' + $slug + '"') | Set-Content Cargo.toml
@@ -77,20 +76,27 @@ jobs:
       - name: Setup vcpkg
         shell: pwsh
         run: |
-          cd C:\vcpkg
+          cd $env:VCPKG_INSTALLATION_ROOT
           # Install dependencies using project overlays
           ./vcpkg.exe install --triplet x64-windows-static --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch
           ./vcpkg.exe integrate install
+          
+          # Configura INCLUDE e LIB dinamicamente para os próximos steps
+          $vcpkgInstalled = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static"
+          Add-Content -Path $env:GITHUB_ENV -Value "INCLUDE=$vcpkgInstalled/include"
+          Add-Content -Path $env:GITHUB_ENV -Value "LIB=$vcpkgInstalled/lib"
 
       - name: Verify vcpkg headers
         shell: pwsh
         run: |
-          $headerPath = "C:\vcpkg\installed\x64-windows-static\include\libavcodec\avcodec.h"
+          $headerPath = "$env:INCLUDE/libavcodec/avcodec.h"
+          Write-Host "Checking header at: $headerPath"
           if (Test-Path $headerPath) {
-            Write-Host "SUCCESS: FFmpeg headers found at $headerPath"
+            Write-Host "SUCCESS: FFmpeg headers found!"
           } else {
-            Write-Host "ERROR: FFmpeg headers NOT found!"
-            Get-ChildItem -Path C:\vcpkg\installed\x64-windows-static\include -Recurse -Filter "avcodec.h"
+            Write-Host "ERROR: FFmpeg headers NOT found at expected location!"
+            Write-Host "Searching in $env:VCPKG_INSTALLATION_ROOT..."
+            Get-ChildItem -Path $env:VCPKG_INSTALLATION_ROOT -Recurse -Filter "avcodec.h"
             exit 1
           }
 
