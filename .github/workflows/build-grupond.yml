@@ -122,8 +122,6 @@ jobs:
           if (Test-Path "vcpkg.json.bak") { Rename-Item "vcpkg.json.bak" "vcpkg.json" }
 
       - name: Build
-
-      - name: Build
         shell: pwsh
         run: |
           # Sync name in Flutter
