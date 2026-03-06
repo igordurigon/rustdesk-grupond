@@ -76,50 +76,27 @@ jobs:
       - name: Setup vcpkg
         shell: pwsh
         run: |
-          # Novo diretório para forçar cache bust
-          $installRoot = "${{ github.workspace }}/vcpkg_new"
-          if (!(Test-Path $installRoot)) { New-Item -ItemType Directory -Path $installRoot }
+          # No modo manifesto, rodamos apenas vcpkg install sem pacotes
+          # Isso usará o vcpkg.json da raiz e criará a pasta vcpkg_installed no workspace
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static
           
-          if (Test-Path "vcpkg.json") { Rename-Item "vcpkg.json" "vcpkg.json.bak" }
+          # Integração para o MSVC
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" integrate install
           
-          cd $env:VCPKG_INSTALLATION_ROOT
+          # Localiza headers no workspace (pasta padrão do modo manifesto)
+          $vcpkgInstalled = "${{ github.workspace }}/vcpkg_installed/x64-windows-static"
           
-          # COMANDO SIMPLIFICADO E CORRIGIDO
-          $vcpkgCmd = "./vcpkg.exe install --triplet x64-windows-static --x-install-root=`"$installRoot`" --overlay-ports=`"${{ github.workspace }}/res/vcpkg`" libvpx libyuv opus aom ffmpeg[amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch"
-          
-          Write-Host "EXECUTANDO: $vcpkgCmd"
-          Invoke-Expression $vcpkgCmd
-          
-          ./vcpkg.exe integrate install
-          
-          # Localiza headers
-          $ffmpegHeader = Get-ChildItem -Path $installRoot -Recurse -Filter "avcodec.h" | Select-Object -First 1
-          if ($ffmpegHeader) {
-            $includePath = $ffmpegHeader.Directory.Parent.FullName
-            $libPath = $ffmpegHeader.Directory.Parent.Parent.FullName + "/lib"
-            Write-Host "SUCCESS: Encontrado FFmpeg em $includePath"
-            Add-Content -Path $env:GITHUB_ENV -Value "INCLUDE=$includePath"
-            Add-Content -Path $env:GITHUB_ENV -Value "LIB=$libPath"
+          if (Test-Path "$vcpkgInstalled/include/libavcodec/avcodec.h") {
+            Write-Host "SUCCESS: FFmpeg headers found in manifest directory!"
+            Add-Content -Path $env:GITHUB_ENV -Value "INCLUDE=$vcpkgInstalled/include"
+            Add-Content -Path $env:GITHUB_ENV -Value "LIB=$vcpkgInstalled/lib"
             Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT"
           } else {
-            Write-Host "ERROR: Headers não encontrados!"
-            Get-ChildItem -Path $installRoot -Recurse | Select-Object FullName
+            Write-Host "ERROR: Headers não encontrados após vcpkg install!"
+            Write-Host "Searching in workspace..."
+            Get-ChildItem -Path ${{ github.workspace }} -Recurse -Filter "avcodec.h" -ErrorAction SilentlyContinue
             exit 1
           }
-
-      - name: Verify Environment
-        shell: pwsh
-        run: |
-          Write-Host "INCLUDE: $env:INCLUDE"
-          Write-Host "LIB: $env:LIB"
-          if (Test-Path "$env:INCLUDE/libavcodec/avcodec.h") {
-            Write-Host "Headers verificados com sucesso!"
-          } else {
-            Write-Host "ERRO: Headers não encontrados no caminho final!"
-            exit 1
-          }
-          # Restaura o vcpkg.json
-          if (Test-Path "vcpkg.json.bak") { Rename-Item "vcpkg.json.bak" "vcpkg.json" }
 
       - name: Build
         shell: pwsh
