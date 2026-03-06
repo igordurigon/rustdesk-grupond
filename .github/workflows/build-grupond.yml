@@ -18,8 +18,8 @@ jobs:
     name: Build Windows Versions
     runs-on: windows-2022
     env:
-      VCPKG_ROOT: "C:/vcpkg"
-      VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
+      VCPKG_ROOT: 'C:\vcpkg'
+      VCPKG_DEFAULT_TRIPLET: 'x64-windows-static'
       VCPKG_ALLOW_TRIPLET_MISMATCH: "1"
       # Injeta flags de compilador para MSVC (cl.exe) para resolver erros de exceção C++ no hwcodec
       CL: "/EHsc /d2FH4-"
@@ -75,8 +75,8 @@ jobs:
         shell: pwsh
         run: |
           cd C:\vcpkg
-          # Install dependencies with explicit features for ffmpeg including hardware acceleration
-          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv]:x64-windows-static
+          # Use project overlays to ensure all headers (NVIDIA, AMD, etc) are correctly available
+          ./vcpkg.exe install --triplet x64-windows-static --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv] ffnvcodec amd-amf
           ./vcpkg.exe integrate install
 
       - name: Build
