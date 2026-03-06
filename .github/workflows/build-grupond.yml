@@ -18,9 +18,13 @@ jobs:
     name: Build Windows Versions
     runs-on: windows-2022
     env:
+      VCPKG_ROOT: 'C:\vcpkg'
       VCPKG_DEFAULT_TRIPLET: 'x64-windows-static'
       VCPKG_ALLOW_TRIPLET_MISMATCH: "1"
-      # Injeta flags de compilador para MSVC (cl.exe) para resolver erros de exceção C++ no hwcodec
+      # Injeta caminhos de busca para o compilador C++ (cl.exe)
+      INCLUDE: 'C:\vcpkg\installed\x64-windows-static\include'
+      LIB: 'C:\vcpkg\installed\x64-windows-static\lib'
+      # Flags para resolver erros de exceção C++ no hwcodec
       CL: "/EHsc /d2FH4-"
     strategy:
       fail-fast: false
@@ -34,28 +38,25 @@ jobs:
       - name: Set Environment Variables
         shell: pwsh
         run: |
-          # Define VCPKG_ROOT using the runner's pre-installed path
-          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          
           if ("${{ matrix.version }}" -eq "client") {
-            "APP_NAME=Atendimento GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            "RS_INCOMING_ONLY=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            "RS_DISABLE_SETTINGS=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            "OUTPUT_NAME=Atendimento_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Add-Content -Path $env:GITHUB_ENV -Value "APP_NAME=Atendimento GrupoND"
+            Add-Content -Path $env:GITHUB_ENV -Value "RS_INCOMING_ONLY=1"
+            Add-Content -Path $env:GITHUB_ENV -Value "RS_DISABLE_SETTINGS=1"
+            Add-Content -Path $env:GITHUB_ENV -Value "OUTPUT_NAME=Atendimento_GrupoND"
             $slug = "atendimento-grupond"
           } else {
-            "APP_NAME=Admin GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            "RS_HIDE_NETWORK=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-            "OUTPUT_NAME=Admin_GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            Add-Content -Path $env:GITHUB_ENV -Value "APP_NAME=Admin GrupoND"
+            Add-Content -Path $env:GITHUB_ENV -Value "RS_HIDE_NETWORK=1"
+            Add-Content -Path $env:GITHUB_ENV -Value "OUTPUT_NAME=Admin_GrupoND"
             $slug = "admin-grupond"
           }
-          "RS_SERVER=${{ github.event.inputs.rs_server }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Add-Content -Path $env:GITHUB_ENV -Value "RS_SERVER=${{ github.event.inputs.rs_server }}"
           
           # Update Cargo.toml
           (Get-Content Cargo.toml) -replace 'name = "rustdesk"', ('name = "' + $slug + '"') `
                                    -replace 'default-run = "rustdesk"', ('default-run = "' + $slug + '"') | Set-Content Cargo.toml
           
-          # Add explicit bin target to Cargo.toml to ensure the renamed package builds a binary
+          # Add explicit bin target to Cargo.toml
           $binSection = "`n[[bin]]`nname = `"$slug`"`npath = `"src/main.rs`"`n"
           Add-Content -Path Cargo.toml -Value $binSection
 
@@ -76,10 +77,22 @@ jobs:
       - name: Setup vcpkg
         shell: pwsh
         run: |
-          cd $env:VCPKG_INSTALLATION_ROOT
-          # Use project overlays and include all hardware acceleration headers
+          cd C:\vcpkg
+          # Install dependencies using project overlays
           ./vcpkg.exe install --triplet x64-windows-static --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch
           ./vcpkg.exe integrate install
+
+      - name: Verify vcpkg headers
+        shell: pwsh
+        run: |
+          $headerPath = "C:\vcpkg\installed\x64-windows-static\include\libavcodec\avcodec.h"
+          if (Test-Path $headerPath) {
+            Write-Host "SUCCESS: FFmpeg headers found at $headerPath"
+          } else {
+            Write-Host "ERROR: FFmpeg headers NOT found!"
+            Get-ChildItem -Path C:\vcpkg\installed\x64-windows-static\include -Recurse -Filter "avcodec.h"
+            exit 1
+          }
 
       - name: Build
         shell: pwsh
