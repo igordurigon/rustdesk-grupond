@@ -18,7 +18,6 @@ jobs:
     name: Build Windows Versions
     runs-on: windows-2022
     env:
-      VCPKG_ROOT: 'C:\vcpkg'
       VCPKG_DEFAULT_TRIPLET: 'x64-windows-static'
       VCPKG_ALLOW_TRIPLET_MISMATCH: "1"
       # Injeta flags de compilador para MSVC (cl.exe) para resolver erros de exceção C++ no hwcodec
@@ -35,6 +34,9 @@ jobs:
       - name: Set Environment Variables
         shell: pwsh
         run: |
+          # Define VCPKG_ROOT using the runner's pre-installed path
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          
           if ("${{ matrix.version }}" -eq "client") {
             "APP_NAME=Atendimento GrupoND" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
             "RS_INCOMING_ONLY=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -74,9 +76,9 @@ jobs:
       - name: Setup vcpkg
         shell: pwsh
         run: |
-          cd C:\vcpkg
-          # Use project overlays to ensure all headers (NVIDIA, AMD, etc) are correctly available
-          ./vcpkg.exe install --triplet x64-windows-static --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv] ffnvcodec amd-amf
+          cd $env:VCPKG_INSTALLATION_ROOT
+          # Use project overlays and include all hardware acceleration headers
+          ./vcpkg.exe install --triplet x64-windows-static --overlay-ports="${{ github.workspace }}/res/vcpkg" libvpx libyuv opus aom ffmpeg[core,avcodec,avdevice,avfilter,avformat,swresample,swscale,amf,nvcodec,qsv] ffnvcodec amd-amf mfx-dispatch
           ./vcpkg.exe integrate install
 
       - name: Build
