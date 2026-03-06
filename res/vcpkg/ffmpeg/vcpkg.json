@@ -39,6 +39,12 @@
       "dependencies": [
         "mfx-dispatch"
       ]
-    }
+    },
+    "swscale": { "description": "Dummy feature for compatibility" },
+    "avcodec": { "description": "Dummy feature for compatibility" },
+    "avdevice": { "description": "Dummy feature for compatibility" },
+    "avfilter": { "description": "Dummy feature for compatibility" },
+    "avformat": { "description": "Dummy feature for compatibility" },
+    "swresample": { "description": "Dummy feature for compatibility" }
   }
-}
+  }
