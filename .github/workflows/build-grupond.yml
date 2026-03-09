@@ -12,7 +12,6 @@ env:
   RUST_VERSION: "1.75"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  # Variáveis para o vcpkg do RustDesk
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
@@ -64,6 +63,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Generate Flutter Rust Bridge
+        shell: pwsh
+        run: |
+          # Instala o codegen do flutter_rust_bridge
+          cargo install flutter_rust_bridge_codegen --version 1.80.1 --locked
+          
+          # Gera os arquivos de bridge necessários para compilar o projeto
+          flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart --rust-output ./src/bridge_generated.rs
+
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
         with:
@@ -93,7 +101,6 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          # Define VCPKG_ROOT explicitamente para o ambiente atual
           $env:VCPKG_ROOT = "C:\vcpkg"
           python build.py --flutter --hwcodec --portable
 
