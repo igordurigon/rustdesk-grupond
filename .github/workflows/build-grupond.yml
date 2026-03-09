@@ -13,6 +13,8 @@ env:
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CARGO_EXPAND_VERSION: "1.0.95"
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
 
 jobs:
   build-windows:
@@ -66,10 +68,16 @@ jobs:
       - name: Generate Flutter Rust Bridge
         shell: pwsh
         run: |
-          # Instala o codegen do flutter_rust_bridge
-          cargo install flutter_rust_bridge_codegen --version 1.80.1 --locked
+          # Instala dependências necessárias para a bridge
+          cargo install cargo-expand --version ${{ env.CARGO_EXPAND_VERSION }} --locked
+          cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid" --locked
           
-          # Gera os arquivos de bridge necessários para compilar o projeto
+          # Entra na pasta flutter e instala as dependências do pub
+          cd flutter
+          flutter pub get
+          cd ..
+          
+          # Gera os arquivos de bridge
           flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart --rust-output ./src/bridge_generated.rs
 
       - name: Setup vcpkg with Github Actions binary cache
