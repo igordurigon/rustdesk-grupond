@@ -11,10 +11,9 @@ on:
 env:
   RUST_VERSION: "1.75"
   FLUTTER_VERSION: "3.24.5"
-  VCPKG_DEFAULT_TRIPLET: x64-windows-static
-  # Flags para resolver erros de exceção C++ no hwcodec e silenciar avisos do vcpkg
-  CL: "/EHsc /d2FH4-"
-  VCPKG_DISABLE_METRICS: "1"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  # Variáveis para o vcpkg do RustDesk
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
 jobs:
   build-windows:
@@ -26,6 +25,13 @@ jobs:
         version: [client, admin]
 
     steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -43,7 +49,6 @@ jobs:
             echo "OUTPUT_NAME=Admin_GrupoND" >> $env:GITHUB_ENV
           }
           echo "RS_SERVER=${{ github.event.inputs.rs_server }}" >> $env:GITHUB_ENV
-          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -59,26 +64,37 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Setup vcpkg dependencies
-        shell: pwsh
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
         run: |
-          # Garante que o vcpkg use os ports customizados do RustDesk
-          # O modo manifesto é acionado automaticamente se rodarmos 'vcpkg install' na raiz
-          # No entanto, vamos forçar a instalação das dependências usando o vcpkg do sistema
-          # mas respeitando os overlays ports definidos no vcpkg.json
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static --vcpkg-root "$env:VCPKG_INSTALLATION_ROOT" --x-manifest-root="${{ github.workspace }}" --x-install-root="${{ github.workspace }}/vcpkg_installed"
-          
-          # Configura variáveis de ambiente para o build do Rust encontrar as libs instaladas no workspace
-          $vcpkg_installed = "${{ github.workspace }}/vcpkg_installed/x64-windows-static"
-          echo "INCLUDE=$vcpkg_installed/include" >> $env:GITHUB_ENV
-          echo "LIB=$vcpkg_installed/lib" >> $env:GITHUB_ENV
-          echo "VCPKG_INSTALLED_ROOT=${{ github.workspace }}/vcpkg_installed" >> $env:GITHUB_ENV
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --triplet x64-windows-static \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              echo "======"
+              cat "$_1"
+              echo "======"
+              echo ""
+            done
+            exit 1
+          fi
+        shell: bash
 
       - name: Build
         shell: pwsh
         run: |
-          # Define explicitamente VCPKG_ROOT para o script python
-          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          # Define VCPKG_ROOT explicitamente para o ambiente atual
+          $env:VCPKG_ROOT = "C:\vcpkg"
           python build.py --flutter --hwcodec --portable
 
       - name: Rename and Upload Artifact
