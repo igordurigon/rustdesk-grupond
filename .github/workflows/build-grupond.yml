@@ -42,12 +42,10 @@ jobs:
           if ("${{ matrix.version }}" -eq "client") {
             echo "APP_NAME=Atendimento GrupoND" >> $env:GITHUB_ENV
             echo "RS_INCOMING_ONLY=1" >> $env:GITHUB_ENV
-            echo "RS_DISABLE_SETTINGS=1" >> $env:GITHUB_ENV
             echo "OUTPUT_NAME=Atendimento_GrupoND" >> $env:GITHUB_ENV
           } else {
             echo "APP_NAME=Admin GrupoND" >> $env:GITHUB_ENV
             echo "RS_HIDE_NETWORK=1" >> $env:GITHUB_ENV
-            echo "RS_DISABLE_SETTINGS=1" >> $env:GITHUB_ENV
             echo "OUTPUT_NAME=Admin_GrupoND" >> $env:GITHUB_ENV
           }
           echo "RS_SERVER=${{ github.event.inputs.rs_server }}" >> $env:GITHUB_ENV
