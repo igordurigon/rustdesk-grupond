@@ -11,17 +11,11 @@ on:
 env:
   RUST_VERSION: "1.75"
   FLUTTER_VERSION: "3.24.5"
-  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
 
 jobs:
   build-windows:
     name: Build Windows Versions
     runs-on: windows-2022
-    env:
-      VCPKG_DEFAULT_TRIPLET: 'x64-windows-static'
-      VCPKG_ALLOW_TRIPLET_MISMATCH: "1"
-      # Flags para resolver erros de exceção C++ no hwcodec
-      CL: "/EHsc /d2FH4-"
     strategy:
       fail-fast: false
       matrix:
@@ -35,36 +29,23 @@ jobs:
         shell: pwsh
         run: |
           if ("${{ matrix.version }}" -eq "client") {
-            Add-Content -Path $env:GITHUB_ENV -Value "APP_NAME=Atendimento GrupoND"
-            Add-Content -Path $env:GITHUB_ENV -Value "RS_INCOMING_ONLY=1"
-            Add-Content -Path $env:GITHUB_ENV -Value "RS_DISABLE_SETTINGS=1"
-            Add-Content -Path $env:GITHUB_ENV -Value "OUTPUT_NAME=Atendimento_GrupoND"
-            $slug = "atendimento-grupond"
+            echo "APP_NAME=Atendimento GrupoND" >> $env:GITHUB_ENV
+            echo "RS_INCOMING_ONLY=1" >> $env:GITHUB_ENV
+            echo "RS_DISABLE_SETTINGS=1" >> $env:GITHUB_ENV
+            echo "OUTPUT_NAME=Atendimento_GrupoND" >> $env:GITHUB_ENV
           } else {
-            Add-Content -Path $env:GITHUB_ENV -Value "APP_NAME=Admin GrupoND"
-            Add-Content -Path $env:GITHUB_ENV -Value "RS_HIDE_NETWORK=1"
-            Add-Content -Path $env:GITHUB_ENV -Value "OUTPUT_NAME=Admin_GrupoND"
-            $slug = "admin-grupond"
+            echo "APP_NAME=Admin GrupoND" >> $env:GITHUB_ENV
+            echo "RS_HIDE_NETWORK=1" >> $env:GITHUB_ENV
+            echo "OUTPUT_NAME=Admin_GrupoND" >> $env:GITHUB_ENV
           }
-          Add-Content -Path $env:GITHUB_ENV -Value "RS_SERVER=${{ github.event.inputs.rs_server }}"
-          
-          # Define VCPKG_ROOT dinamicamente
-          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT"
-          
-          # Update Cargo.toml
-          (Get-Content Cargo.toml) -replace 'name = "rustdesk"', ('name = "' + $slug + '"') `
-                                   -replace 'default-run = "rustdesk"', ('default-run = "' + $slug + '"') | Set-Content Cargo.toml
-          
-          # Add explicit bin target to Cargo.toml
-          $binSection = "`n[[bin]]`nname = `"$slug`"`npath = `"src/main.rs`"`n"
-          Add-Content -Path Cargo.toml -Value $binSection
+          echo "RS_SERVER=${{ github.event.inputs.rs_server }}" >> $env:GITHUB_ENV
+          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
           target: x86_64-pc-windows-msvc
-          components: rustfmt
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -73,44 +54,31 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Setup vcpkg
+      - name: Setup vcpkg and Install Dependencies
         shell: pwsh
         run: |
-          # No modo manifesto, rodamos apenas vcpkg install sem pacotes
-          # Isso usará o vcpkg.json da raiz e criará a pasta vcpkg_installed no workspace
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static
-          
-          # Integração para o MSVC
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" integrate install
-          
-          # Localiza headers no workspace (pasta padrão do modo manifesto)
-          $vcpkgInstalled = "${{ github.workspace }}/vcpkg_installed/x64-windows-static"
-          
-          if (Test-Path "$vcpkgInstalled/include/libavcodec/avcodec.h") {
-            Write-Host "SUCCESS: FFmpeg headers found in manifest directory!"
-            Add-Content -Path $env:GITHUB_ENV -Value "INCLUDE=$vcpkgInstalled/include"
-            Add-Content -Path $env:GITHUB_ENV -Value "LIB=$vcpkgInstalled/lib"
-            Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT"
-          } else {
-            Write-Host "ERROR: Headers não encontrados após vcpkg install!"
-            Write-Host "Searching in workspace..."
-            Get-ChildItem -Path ${{ github.workspace }} -Recurse -Filter "avcodec.h" -ErrorAction SilentlyContinue
-            exit 1
-          }
+          cd $env:VCPKG_INSTALLATION_ROOT
+          # Instalamos as dependências de forma clássica para garantir compatibilidade
+          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
 
       - name: Build
         shell: pwsh
         run: |
-          # Sync name in Flutter
-          (Get-Content flutter/pubspec.yaml) -replace 'name: rustdesk', ('name: ' + "${{ env.OUTPUT_NAME }}".ToLower().Replace('_', '-')) | Set-Content flutter/pubspec.yaml
-          
-          # Compila a versão personalizada com Flutter e gera o executável portátil (Single EXE)
+          # O arquivo .cargo/config.toml já configuramos para apontar VCPKG_ROOT = "C:/vcpkg"
+          # que é o padrão do windows-2022 runner.
           python build.py --flutter --hwcodec --portable
-          
-          # Rename the final executable
-          Get-ChildItem -Filter "rustdesk-*-install.exe" | Rename-Item -NewName "${{ env.OUTPUT_NAME }}_Setup.exe"
 
       - name: Rename and Upload Artifact
+        shell: pwsh
+        run: |
+          # Localiza o executável gerado (geralmente rustdesk-VERSION-install.exe)
+          $exe = Get-ChildItem -Filter "rustdesk-*-install.exe" | Select-Object -First 1
+          if ($exe) {
+            Rename-Item -Path $exe.FullName -NewName "${{ env.OUTPUT_NAME }}_Setup.exe"
+            echo "FINAL_EXE=${{ env.OUTPUT_NAME }}_Setup.exe" >> $env:GITHUB_ENV
+          }
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.OUTPUT_NAME }}
