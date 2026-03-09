@@ -46,6 +46,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           target: x86_64-pc-windows-msvc
+          components: rustfmt
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -58,8 +59,8 @@ jobs:
         shell: pwsh
         run: |
           cd $env:VCPKG_INSTALLATION_ROOT
-          # Instalamos as dependências de forma clássica para garantir compatibilidade
-          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
+          # Instalamos TODAS as dependências necessárias, incluindo o FFmpeg com os plugins de hardware
+          ./vcpkg.exe install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static ffmpeg[amf,nvcodec,qsv]:x64-windows-static libjpeg-turbo:x64-windows-static
 
       - name: Build
         shell: pwsh
