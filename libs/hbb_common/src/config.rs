@@ -2513,7 +2513,7 @@ fn is_some_hard_opton(name: &str) -> bool {
     if name == "disable-settings" && option_env!("RS_DISABLE_SETTINGS").is_some() {
         return true;
     }
-    if name == "hide-network-setting" && option_env!("RS_HIDE_NETWORK").is_some() {
+    if name == "hide-network-settings" && option_env!("RS_HIDE_NETWORK").is_some() {
         return true;
     }
     HARD_SETTINGS

@@ -1973,6 +1973,9 @@ pub fn get_hwid() -> Bytes {
 
 #[inline]
 pub fn get_builtin_option(key: &str) -> String {
+    if key == "hide-network-settings" && option_env!("RS_HIDE_NETWORK").is_some() {
+        return "Y".to_string();
+    }
     config::BUILTIN_SETTINGS
         .read()
         .unwrap()
