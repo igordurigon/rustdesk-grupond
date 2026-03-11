@@ -10,7 +10,7 @@ on:
       rs_key:
         description: 'Chave Pública do Servidor (Public Key)'
         required: false
-        default: ''
+        default: '05Q9aFxELHvLZ4ZF4IxFyBq1rYjIvf2xV5j7qcKYrJQ='
 
 env:
   RUST_VERSION: "1.75"
