@@ -7,6 +7,10 @@ on:
         description: 'Endereço do Servidor ID/Relay (ex: rustdesk.grupond.com.br)'
         required: true
         default: 'SEU_IP_OU_DOMINIO'
+      rs_key:
+        description: 'Chave Pública do Servidor (Public Key)'
+        required: false
+        default: ''
 
 env:
   RUST_VERSION: "1.75"
@@ -110,6 +114,9 @@ jobs:
         shell: pwsh
         run: |
           $env:VCPKG_ROOT = "C:\vcpkg"
+          if ("${{ github.event.inputs.rs_key }}" -ne "") {
+            $env:RS_PUB_KEY = "${{ github.event.inputs.rs_key }}"
+          }
           python build.py --flutter --hwcodec --portable
 
       - name: Rename and Upload Artifact
