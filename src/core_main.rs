@@ -120,9 +120,19 @@ pub fn core_main() -> Option<Vec<String>> {
         return core_main_invoke_new_connection(std::env::args());
     }
     let click_setup = cfg!(windows) && args.is_empty() && crate::common::is_setup(&arg_exe);
-    if click_setup && !config::is_disable_installation() {
-        args.push("--install".to_owned());
-        flutter_args.push("--install".to_string());
+    if click_setup {
+        // Se for o executável de instalação, instalamos silenciosamente e abrimos o app.
+        // Isso garante que atalhos e inicialização sejam criados sem mudar o comportamento.
+        #[cfg(windows)]
+        {
+            // Se já estiver instalado, apenas abre. Se não, instala e abre.
+            if !crate::platform::is_installed() {
+                let _ = crate::platform::windows::install_me("startmenu desktopicon printer", "".to_string(), true, false);
+            }
+            // Removemos o flag de instalação para o Flutter não abrir a tela de setup
+            args.clear();
+            flutter_args.clear();
+        }
     }
     if args.contains(&"--noinstall".to_string()) {
         args.clear();
