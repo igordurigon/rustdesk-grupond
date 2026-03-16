@@ -1558,7 +1558,12 @@ if exist \"{tmp_path}\\Uninstall {app_name}.lnk\" del /f /q \"{tmp_path}\\Uninst
 if exist \"{tmp_path}\\{app_name} Tray.lnk\" del /f /q \"{tmp_path}\\{app_name} Tray.lnk\"
         "
     );
-    let src_exe = std::env::current_exe()?.to_str().unwrap_or("").to_string();
+    let mut src_exe = std::env::current_exe()?.to_str().unwrap_or("").to_string();
+    if let Ok(portable_exe) = std::env::var(crate::common::PORTABLE_APPNAME_RUNTIME_ENV_KEY) {
+        if std::path::Path::new(&portable_exe).exists() {
+            src_exe = portable_exe;
+        }
+    }
 
     // potential bug here: if run_cmd cancelled, but config file is changed.
     if let Some(lic) = get_license() {
@@ -1632,6 +1637,7 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
         sleep = if debug { "timeout 300" } else { "" },
         dels = if debug { "" } else { &dels },
         copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,
+        rename_exe = rename_exe_cmd(&src_exe, &path)?,
         import_config = get_import_config(&exe),
     );
     run_cmds(cmds, debug, "install")?;
