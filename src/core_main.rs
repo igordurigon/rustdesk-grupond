@@ -47,14 +47,9 @@ pub fn core_main() -> Option<Vec<String>> {
     let mut _is_flutter_invoke_new_connection = false;
     let mut no_server = false;
     let mut arg_exe = Default::default();
-    if let Ok(portable_exe) = std::env::var(crate::common::PORTABLE_APPNAME_RUNTIME_ENV_KEY) {
-        arg_exe = portable_exe;
-    }
     for arg in std::env::args() {
         if i == 0 {
-            if arg_exe.is_empty() {
-                arg_exe = arg;
-            }
+            arg_exe = arg;
         } else if i > 0 {
             #[cfg(feature = "flutter")]
             if [
