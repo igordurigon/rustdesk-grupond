@@ -1600,6 +1600,7 @@ copy /Y \"{tmp_path}\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\
 chcp 65001
 md \"{path}\"
 {copy_exe}
+{rename_exe}
 reg add {subkey} /f
 reg add {subkey} /f /v DisplayIcon /t REG_SZ /d \"{display_icon}\"
 reg add {subkey} /f /v DisplayName /t REG_SZ /d \"{app_name}\"
