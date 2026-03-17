@@ -1356,13 +1356,15 @@ pub fn rename_exe_cmd(src_exe: &str, path: &str) -> ResultType<String> {
         .ok_or(anyhow!("Can't get file name of {src_exe}"))?
         .to_string_lossy()
         .to_string();
-    let app_name = crate::get_app_name().to_lowercase();
-    if src_exe_filename.to_lowercase() == format!("{app_name}.exe") {
+    let app_name = crate::get_app_name();
+    let target_name = format!("{app_name}.exe");
+    
+    if src_exe_filename == target_name {
         Ok("".to_owned())
     } else {
         Ok(format!(
             "
-        move /Y \"{path}\\{src_exe_filename}\" \"{path}\\{app_name}.exe\"
+        if exist \"{path}\\{src_exe_filename}\" move /Y \"{path}\\{src_exe_filename}\" \"{path}\\{target_name}\"
         ",
         ))
     }
@@ -1480,6 +1482,7 @@ sLinkFile = \"{tmp_path}\\{app_name}.lnk\"
 
 Set oLink = oWS.CreateShortcut(sLinkFile)
     oLink.TargetPath = \"{exe}\"
+    oLink.WorkingDirectory = \"{path}\"
     {shortcut_icon_location}
 oLink.Save
         "
@@ -1558,12 +1561,7 @@ if exist \"{tmp_path}\\Uninstall {app_name}.lnk\" del /f /q \"{tmp_path}\\Uninst
 if exist \"{tmp_path}\\{app_name} Tray.lnk\" del /f /q \"{tmp_path}\\{app_name} Tray.lnk\"
         "
     );
-    let mut src_exe = std::env::current_exe()?.to_str().unwrap_or("").to_string();
-    if let Ok(portable_exe) = std::env::var(crate::common::PORTABLE_APPNAME_RUNTIME_ENV_KEY) {
-        if std::path::Path::new(&portable_exe).exists() {
-            src_exe = portable_exe;
-        }
-    }
+    let src_exe = std::env::current_exe()?.to_str().unwrap_or("").to_string();
 
     // potential bug here: if run_cmd cancelled, but config file is changed.
     if let Some(lic) = get_license() {
