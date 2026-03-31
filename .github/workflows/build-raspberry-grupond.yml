@@ -137,12 +137,22 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${{ env.RUST_VERSION }}
             source $HOME/.cargo/env
             
-            # Setup vcpkg (building from source in container as no ARM prebuilts)
+            # Setup vcpkg (downloading prebuilt binary to avoid bootstrap failure in QEMU)
             export VCPKG_ROOT=/opt/vcpkg
-            git clone https://github.com/microsoft/vcpkg $VCPKG_ROOT
+            git clone --depth=1 https://github.com/microsoft/vcpkg $VCPKG_ROOT
             pushd $VCPKG_ROOT
             git reset --hard ${{ env.VCPKG_COMMIT_ID }}
+            
+            # Download prebuilt vcpkg binary for linux-arm64
+            # We use the official tool's bootstrap but skip compilation if possible
             ./bootstrap-vcpkg.sh -disableMetrics
+            
+            # Verify if vcpkg binary exists, if not, try to download it directly
+            if [ ! -f "$VCPKG_ROOT/vcpkg" ]; then
+              echo "Bootstrap failed to create binary, attempting manual download..."
+              wget -O $VCPKG_ROOT/vcpkg https://github.com/microsoft/vcpkg-tool/releases/latest/download/vcpkg
+              chmod +x $VCPKG_ROOT/vcpkg
+            fi
             popd
             
             # Create a clean vcpkg.json for ARM (using standard vcpkg ports)
