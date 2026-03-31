@@ -152,7 +152,7 @@ jobs:
                 \"x264\",
                 {
                   \"name\": \"ffmpeg\",
-                  \"features\": [\"opus\", \"libvpx\", \"x264\"],
+                  \"features\": [\"opus\", \"vpx\", \"x264\"],
                   \"default-features\": false
                 }
               ],
