@@ -112,7 +112,9 @@ jobs:
                ninja-build \
                pkg-config \
                python3 \
+               rpm \
                unzip \
+               zip \
                wget \
                xz-utils \
                libssl-dev \
