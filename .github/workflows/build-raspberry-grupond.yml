@@ -139,7 +139,7 @@ jobs:
             
             # Setup vcpkg (downloading prebuilt binary to avoid bootstrap failure in QEMU)
             export VCPKG_ROOT=/opt/vcpkg
-            git clone --depth=1 https://github.com/microsoft/vcpkg $VCPKG_ROOT
+            git clone https://github.com/microsoft/vcpkg $VCPKG_ROOT
             pushd $VCPKG_ROOT
             git reset --hard ${{ env.VCPKG_COMMIT_ID }}
             
