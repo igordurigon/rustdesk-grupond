@@ -141,31 +141,28 @@ jobs:
             ./bootstrap-vcpkg.sh -disableMetrics
             popd
             
-            # Create a clean vcpkg.json for ARM
-            echo '{
-              "dependencies": [
-                "aom",
-                "libjpeg-turbo",
-                "opus",
-                "libvpx",
-                "libyuv",
-                "x264",
+            # Create a clean vcpkg.json for ARM (using standard vcpkg ports)
+            echo "{
+              \"dependencies\": [
+                \"aom\",
+                \"libjpeg-turbo\",
+                \"opus\",
+                \"libvpx\",
+                \"libyuv\",
+                \"x264\",
                 {
-                  "name": "ffmpeg",
-                  "features": ["opus", "libvpx", "x264"],
-                  "default-features": false
+                  \"name\": \"ffmpeg\",
+                  \"features\": [\"opus\", \"libvpx\", \"x264\"],
+                  \"default-features\": false
                 }
               ],
-              "vcpkg-configuration": {
-                "default-registry": {
-                  "kind": "builtin",
-                  "baseline": "120deac3062162151622ca4860575a33844ba10b"
-                },
-                "overlay-ports": [
-                  "./res/vcpkg"
-                ]
+              \"vcpkg-configuration\": {
+                \"default-registry\": {
+                  \"kind\": \"builtin\",
+                  \"baseline\": \"120deac3062162151622ca4860575a33844ba10b\"
+                }
               }
-            }' > /workspace/vcpkg.json
+            }" > /workspace/vcpkg.json
             
             # Build dependencies with vcpkg using the manifest
             $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed"
