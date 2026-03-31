@@ -165,8 +165,9 @@ jobs:
               }
             }' > /workspace/vcpkg.json
             
-            # Build dependencies with vcpkg
-            $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed"
+            # Build dependencies with vcpkg (explicitly disabling hardware features for ARM)
+            $VCPKG_ROOT/vcpkg install "ffmpeg[core,opus,libvpx,x264]" --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed"
+            $VCPKG_ROOT/vcpkg install aom libjpeg-turbo opus libvpx libyuv --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed"
 
             # Build Logic
             cd /workspace
