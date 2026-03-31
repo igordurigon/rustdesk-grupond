@@ -113,6 +113,7 @@ jobs:
                libxcb-xfixes0-dev \
                libxdo-dev \
                libxfixes-dev \
+               libjpeg-dev \
                llvm-14-dev \
                nasm \
                ninja-build \
@@ -129,6 +130,9 @@ jobs:
             # Fix git safe directory
             git config --global --add safe.directory "*"
             
+            # Limit vcpkg concurrency to avoid OOM in QEMU
+            export VCPKG_MAX_CONCURRENCY=2
+
             # Install Rust
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${{ env.RUST_VERSION }}
             source $HOME/.cargo/env
