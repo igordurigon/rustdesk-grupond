@@ -159,6 +159,9 @@ jobs:
               }
             }' > /workspace/vcpkg.json
             
+            # Limit concurrency to prevent OOM/Segfault in QEMU
+            export VCPKG_MAX_CONCURRENCY=1
+            
             $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed"
 
             # Build Logic
