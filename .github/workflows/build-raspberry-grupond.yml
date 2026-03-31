@@ -136,10 +136,17 @@ jobs:
             popd
             
             # Install vcpkg dependencies (skip some desktop-only features)
-            # We don't need amf/nvcodec on Raspberry Pi
+            # We don't need Intel/AMD/NVIDIA specific codecs on Raspberry Pi
+            sed -i '/mfx-dispatch/d' /workspace/vcpkg.json
+            sed -i '/ffnvcodec/d' /workspace/vcpkg.json
+            sed -i '/amd-amf/d' /workspace/vcpkg.json
             sed -i 's/"amf",//' /workspace/vcpkg.json
             sed -i 's/"nvcodec",//' /workspace/vcpkg.json
             sed -i 's/"qsv"//' /workspace/vcpkg.json
+            
+            # Remove those from overrides as well
+            sed -i '/"name": "ffnvcodec"/,+3d' /workspace/vcpkg.json
+            sed -i '/"name": "amd-amf"/,+3d' /workspace/vcpkg.json
             
             $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed"
 
