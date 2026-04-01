@@ -133,6 +133,9 @@ jobs:
             # Limit vcpkg concurrency to avoid OOM in QEMU
             export VCPKG_MAX_CONCURRENCY=2
 
+            # Ensure zlib is linked by setting RUSTFLAGS
+            export RUSTFLAGS="-lz"
+
             # Install Rust
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${{ env.RUST_VERSION }}
             source $HOME/.cargo/env
