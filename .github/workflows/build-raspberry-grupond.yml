@@ -182,11 +182,12 @@ jobs:
             export DEB_ARCH=${{ matrix.job.deb_arch }}
             
             if [ "${{ matrix.job.ui }}" == "flutter" ]; then
-              # Setup Flutter
+              # Setup Flutter for ARM64 using git clone
               pushd /opt
-              wget https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
-              tar xf flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
-              export PATH=$PWD/flutter/bin:$PATH
+              git clone https://github.com/flutter/flutter.git
+              cd flutter
+              git checkout ${{ env.FLUTTER_VERSION }}
+              export PATH=$PWD/bin:$PATH
               popd
               
               # Setup flutter_rust_bridge
@@ -198,9 +199,6 @@ jobs:
               
               # Build Flutter version
               python3 build.py --flutter --hwcodec
-              
-              # Rename resulting deb
-              mv rustdesk-*.deb ${{ env.OUTPUT_NAME }}_${{ matrix.job.deb_arch }}.deb
             else
               # Build Sciter version
               python3 res/inline-sciter.py
