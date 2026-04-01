@@ -164,11 +164,7 @@ jobs:
                 \"libvpx\",
                 \"libyuv\",
                 \"x264\",
-                {
-                  \"name\": \"ffmpeg\",
-                  \"features\": [\"opus\", \"vpx\", \"x264\"],
-                  \"default-features\": false
-                }
+                \"ffmpeg\"
               ],
               \"vcpkg-configuration\": {
                 \"default-registry\": {
