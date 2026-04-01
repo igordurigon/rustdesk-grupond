@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Force update of build.py for GitHub Actions environment
 
 import os
 import pathlib
@@ -10,6 +11,9 @@ import hashlib
 import argparse
 import sys
 from pathlib import Path
+
+# Ensure skip_cargo is defined globally at module level
+skip_cargo = False
 
 windows = platform.platform().startswith('Windows')
 osx = platform.platform().startswith(
@@ -412,7 +416,8 @@ def build_deb_from_folder(version, binary_folder):
     os.chdir("..")
 
 
-def build_flutter_dmg(version, features):
+def build_flutter_deb(version, features):
+    global skip_cargo # Explicitly declare skip_cargo as global
     if not skip_cargo:
         # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project
         system2(
@@ -491,9 +496,10 @@ def main():
     flutter = args.flutter
     if not flutter:
         system2('python3 res/inline-sciter.py')
-    print(args.skip_cargo)
+    print(f"DEBUG: skip_cargo in main before assignment: {skip_cargo}")
     if args.skip_cargo:
         skip_cargo = True
+    print(f"DEBUG: skip_cargo in main after assignment: {skip_cargo}")
     portable = args.portable
     package = args.package
     if package:
