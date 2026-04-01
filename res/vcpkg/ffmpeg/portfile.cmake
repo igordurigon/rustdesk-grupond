@@ -99,7 +99,7 @@ if(VCPKG_TARGET_IS_LINUX)
 --disable-vdpau \
 ")
 
-    if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm")
+    if(VCPKG_TARGET_ARCHITECTURE MATCHES "^arm")
     else()
         string(APPEND OPTIONS "\
 --enable-cuda \
