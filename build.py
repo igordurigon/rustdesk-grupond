@@ -20,10 +20,20 @@ if windows:
     flutter_build_dir = 'build/windows/x64/runner/Release/'
 elif osx:
     flutter_build_dir = 'build/macos/Build/Products/Release/'
-else:
-    flutter_build_dir = 'build/linux/x64/release/bundle/'
+else: # linux
+    # Determine the correct build directory based on architecture
+    target_arch = os.environ.get("BUILD_ARCH", "x64") # BUILD_ARCH is set by run-on-arch-action
+    if target_arch == "aarch64":
+        flutter_build_dir = 'build/linux/arm64/release/bundle/'
+    elif target_arch == "armv7":
+        flutter_build_dir = 'build/linux/armhf/release/bundle/'
+    elif target_arch == "x64": # Explicitly handle x64 too
+        flutter_build_dir = 'build/linux/x64/release/bundle/'
+    else: # Fallback or unknown architecture
+        # Log a warning if BUILD_ARCH is unexpected or not set
+        print(f"WARN: BUILD_ARCH is unset or unexpected ('{target_arch}'). Defaulting to x64.")
+        flutter_build_dir = 'build/linux/x64/release/bundle/'
 flutter_build_dir_2 = f'flutter/{flutter_build_dir}'
-skip_cargo = False
 
 
 def get_deb_arch() -> str:
