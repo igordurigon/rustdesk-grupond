@@ -332,9 +332,11 @@ def ffi_bindgen_function_refactor():
 def build_flutter_deb(version, features):
     global skip_cargo # Explicitly declare skip_cargo as global
     if not skip_cargo:
-        system2(f'cargo build --features {features} --lib --release')
+        # Link zlib explicitly for Linux ARM64
+        system2(f'export RUSTFLAGS="-lz"; cargo build --features {features} --lib --release')
         ffi_bindgen_function_refactor()
     os.chdir('flutter')
+    # Build for Linux
     system2('flutter build linux --release')
     system2('mkdir -p tmpdeb/usr/bin/')
     system2('mkdir -p tmpdeb/usr/share/rustdesk')
@@ -416,7 +418,7 @@ def build_deb_from_folder(version, binary_folder):
     os.chdir("..")
 
 
-def build_flutter_deb(version, features):
+def build_flutter_dmg(version, features):
     global skip_cargo # Explicitly declare skip_cargo as global
     if not skip_cargo:
         # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project
@@ -428,11 +430,6 @@ def build_flutter_deb(version, features):
     os.chdir('flutter')
     system2('flutter build macos --release')
     system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/')
-    '''
-    system2(
-        "create-dmg --volname \"RustDesk Installer\" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon RustDesk.app 200 190 --hide-extension RustDesk.app rustdesk.dmg ./build/macos/Build/Products/Release/RustDesk.app")
-    os.rename("rustdesk.dmg", f"../rustdesk-{version}.dmg")
-    '''
     os.chdir("..")
 
 
@@ -496,10 +493,12 @@ def main():
     flutter = args.flutter
     if not flutter:
         system2('python3 res/inline-sciter.py')
-    print(f"DEBUG: skip_cargo in main before assignment: {skip_cargo}")
+    
+    # Ensure skip_cargo is set based on command line args
     if args.skip_cargo:
         skip_cargo = True
     print(f"DEBUG: skip_cargo in main after assignment: {skip_cargo}")
+
     portable = args.portable
     package = args.package
     if package:
@@ -590,14 +589,13 @@ def main():
             'mv $HOME/rpmbuild/RPMS/x86_64/rustdesk-%s-0.x86_64.rpm ./rustdesk-%s-suse.rpm' % (
                 version, version))
         # yum localinstall rustdesk.rpm
-    else:
+    else: # Linux or macOS
         if flutter:
-            if osx:
+            if platform.system() == 'Darwin': # macOS
                 build_flutter_dmg(version, features)
-                pass
-            else:
-                # system2(
-                #     'mv target/release/bundle/deb/rustdesk*.deb ./flutter/rustdesk.deb')
+            elif platform.system() == 'Linux': # Linux
+                build_flutter_deb(version, features)
+            else: # Fallback
                 build_flutter_deb(version, features)
         else:
             system2('cargo bundle --release --features ' + features)
