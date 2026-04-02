@@ -276,13 +276,14 @@ def external_resources(flutter, args, res_dir):
     os.makedirs(res_dir, exist_ok=True)
     download_extract_features(features, res_dir)
     if flutter:
-        os.makedirs(flutter_build_dir_2, exist_ok=True)
+        fbd2 = f'flutter/{get_flutter_build_dir()}'
+        os.makedirs(fbd2, exist_ok=True)
         for f in pathlib.Path(res_dir).iterdir():
             print(f'{f}')
             if f.is_file():
-                shutil.copy2(f, flutter_build_dir_2)
+                shutil.copy2(f, fbd2)
             else:
-                shutil.copytree(f, f'{flutter_build_dir_2}{f.stem}')
+                shutil.copytree(f, f'{fbd2}{f.stem}')
 
 
 def get_features(args):
@@ -349,7 +350,7 @@ def build_flutter_deb(version, features):
     system2('mkdir -p tmpdeb/usr/share/polkit-1/actions')
     system2('rm tmpdeb/usr/bin/rustdesk || true')
     system2(
-        f'cp -r {flutter_build_dir}/* tmpdeb/usr/share/rustdesk/')
+        f'cp -r {get_flutter_build_dir()}/* tmpdeb/usr/share/rustdesk/')
     system2(
         'cp ../res/rustdesk.service tmpdeb/usr/share/rustdesk/files/systemd/')
     system2(
@@ -439,7 +440,7 @@ def build_flutter_arch_manjaro(version, features):
     ffi_bindgen_function_refactor()
     os.chdir('flutter')
     system2('flutter build linux --release')
-    system2(f'strip {flutter_build_dir}/lib/librustdesk.so')
+    system2(f'strip {get_flutter_build_dir()}/lib/librustdesk.so')
     os.chdir('../res')
     system2('HBB=`pwd`/.. FLUTTER=1 makepkg -f')
 
@@ -453,14 +454,15 @@ def build_flutter_windows(version, features, skip_portable_pack):
     os.chdir('flutter')
     system2('flutter build windows --release')
     os.chdir('..')
+    fbd2 = f'flutter/{get_flutter_build_dir()}'
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
-                 flutter_build_dir_2)
+                 fbd2)
     if skip_portable_pack:
         return
     os.chdir('libs/portable')
     system2('pip3 install -r requirements.txt')
     
-    abs_flutter_dir = os.path.abspath(f"../../{flutter_build_dir_2}")
+    abs_flutter_dir = os.path.abspath(f"../../{fbd2}")
     abs_flutter_exe = os.path.join(abs_flutter_dir, "rustdesk.exe")
     
     system2(
