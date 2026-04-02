@@ -26,17 +26,21 @@ elif osx:
     flutter_build_dir = 'build/macos/Build/Products/Release/'
 else: # linux
     # Determine the correct build directory based on architecture
-    target_arch = os.environ.get("BUILD_ARCH", "x64") # BUILD_ARCH is set by run-on-arch-action
+    target_arch = os.environ.get("BUILD_ARCH")
     if target_arch == "aarch64":
         flutter_build_dir = 'build/linux/arm64/release/bundle/'
     elif target_arch == "armv7":
         flutter_build_dir = 'build/linux/armhf/release/bundle/'
-    elif target_arch == "x64": # Explicitly handle x64 too
-        flutter_build_dir = 'build/linux/x64/release/bundle/'
-    else: # Fallback or unknown architecture
-        # Log a warning if BUILD_ARCH is unexpected or not set
-        print(f"WARN: BUILD_ARCH is unset or unexpected ('{target_arch}'). Defaulting to x64.")
-        flutter_build_dir = 'build/linux/x64/release/bundle/'
+    else:
+        # Robust check: see which directory actually exists
+        if os.path.exists('flutter/build/linux/arm64/release/bundle/'):
+            flutter_build_dir = 'build/linux/arm64/release/bundle/'
+        elif os.path.exists('flutter/build/linux/armhf/release/bundle/'):
+            flutter_build_dir = 'build/linux/armhf/release/bundle/'
+        else:
+            flutter_build_dir = 'build/linux/x64/release/bundle/'
+            if target_arch and target_arch != "x64":
+                print(f"WARN: BUILD_ARCH is '{target_arch}' but no ARM build dir found. Defaulting to x64.")
 flutter_build_dir_2 = f'flutter/{flutter_build_dir}'
 
 
