@@ -351,6 +351,8 @@ def build_flutter_deb(version, features):
     system2('rm tmpdeb/usr/bin/rustdesk || true')
     system2(
         f'cp -r {get_flutter_build_dir()}/* tmpdeb/usr/share/rustdesk/')
+    # Create symlink so 'rustdesk' command works and menu icon finds the binary
+    system2('ln -s /usr/share/rustdesk/rustdesk tmpdeb/usr/bin/rustdesk')
     system2(
         'cp ../res/rustdesk.service tmpdeb/usr/share/rustdesk/files/systemd/')
     system2(
