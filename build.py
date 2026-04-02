@@ -20,29 +20,25 @@ osx = platform.platform().startswith(
     'Darwin') or platform.platform().startswith("macOS")
 hbb_name = 'rustdesk' + ('.exe' if windows else '')
 exe_path = 'target/release/' + hbb_name
-if windows:
-    flutter_build_dir = 'build/windows/x64/runner/Release/'
-elif osx:
-    flutter_build_dir = 'build/macos/Build/Products/Release/'
-else: # linux
-    # Determine the correct build directory based on architecture
-    target_arch = os.environ.get("BUILD_ARCH")
-    if target_arch == "aarch64":
-        flutter_build_dir = 'build/linux/arm64/release/bundle/'
-    elif target_arch == "armv7":
-        flutter_build_dir = 'build/linux/armhf/release/bundle/'
-    else:
-        # Robust check: see which directory actually exists
-        if os.path.exists('flutter/build/linux/arm64/release/bundle/'):
-            flutter_build_dir = 'build/linux/arm64/release/bundle/'
-        elif os.path.exists('flutter/build/linux/armhf/release/bundle/'):
-            flutter_build_dir = 'build/linux/armhf/release/bundle/'
-        else:
-            flutter_build_dir = 'build/linux/x64/release/bundle/'
-            if target_arch and target_arch != "x64":
-                print(f"WARN: BUILD_ARCH is '{target_arch}' but no ARM build dir found. Defaulting to x64.")
-flutter_build_dir_2 = f'flutter/{flutter_build_dir}'
-
+def get_flutter_build_dir():
+    if windows:
+        return 'build/windows/x64/runner/Release/'
+    elif osx:
+        return 'build/macos/Build/Products/Release/'
+    else: # linux
+        target_arch = os.environ.get("BUILD_ARCH")
+        if target_arch == "aarch64":
+            return 'build/linux/arm64/release/bundle/'
+        elif target_arch == "armv7":
+            return 'build/linux/armhf/release/bundle/'
+        
+        # Runtime check for existing directory
+        for prefix in ['', 'flutter/']:
+            if os.path.exists(f'{prefix}build/linux/arm64/release/bundle/'):
+                return 'build/linux/arm64/release/bundle/'
+            if os.path.exists(f'{prefix}build/linux/armhf/release/bundle/'):
+                return 'build/linux/armhf/release/bundle/'
+        return 'build/linux/x64/release/bundle/'
 
 def get_deb_arch() -> str:
     custom_arch = os.environ.get("DEB_ARCH")
