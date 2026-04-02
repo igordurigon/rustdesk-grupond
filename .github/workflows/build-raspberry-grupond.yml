@@ -146,14 +146,20 @@ jobs:
             pushd $VCPKG_ROOT
             git reset --hard ${{ env.VCPKG_COMMIT_ID }}
             
-            # Download prebuilt vcpkg binary for linux-arm64
-            # We use the official tool's bootstrap but skip compilation if possible
+            # Use official bootstrap
             ./bootstrap-vcpkg.sh -disableMetrics
             
-            # Verify if vcpkg binary exists, if not, try to download it directly
+            # Fallback for vcpkg binary detection/download
             if [ ! -f "$VCPKG_ROOT/vcpkg" ]; then
-              echo "Bootstrap failed to create binary, attempting manual download..."
-              wget -O $VCPKG_ROOT/vcpkg https://github.com/microsoft/vcpkg-tool/releases/latest/download/vcpkg
+              echo "Bootstrap failed to create binary, attempting architecture-specific download..."
+              ARCH_NAME=$(uname -m)
+              if [ "$ARCH_NAME" == "aarch64" ]; then
+                VCPKG_TOOL_URL="https://github.com/microsoft/vcpkg-tool/releases/latest/download/vcpkg"
+              else
+                # Default to latest, or handle other ARM versions
+                VCPKG_TOOL_URL="https://github.com/microsoft/vcpkg-tool/releases/latest/download/vcpkg" 
+              fi
+              wget -O $VCPKG_ROOT/vcpkg $VCPKG_TOOL_URL || echo "Manual download failed"
               chmod +x $VCPKG_ROOT/vcpkg
             fi
             popd
@@ -203,6 +209,9 @@ jobs:
               
               # Build Flutter version
               python3 build.py --flutter --hwcodec
+              
+              # Rename resulting deb for artifact upload
+              mv rustdesk-*.deb ${{ env.OUTPUT_NAME }}_${{ matrix.job.deb_arch }}.deb
             else
               # Build Sciter version
               python3 res/inline-sciter.py
