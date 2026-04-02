@@ -134,6 +134,9 @@ jobs:
             # Limit vcpkg concurrency to avoid OOM in QEMU
             export VCPKG_MAX_CONCURRENCY=2
 
+            # Ensure vcpkg uses system binaries for ARM
+            export VCPKG_FORCE_SYSTEM_BINARIES=1
+
             # Ensure zlib is linked by setting RUSTFLAGS
             export RUSTFLAGS="-lz"
 
