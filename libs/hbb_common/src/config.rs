@@ -56,9 +56,9 @@ lazy_static::lazy_static! {
     static ref STATUS: RwLock<Status> = RwLock::new(Status::load());
     static ref TRUSTED_DEVICES: RwLock<(Vec<TrustedDevice>, bool)> = Default::default();
     static ref ONLINE: Mutex<HashMap<String, i64>> = Default::default();
-    pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new(option_env!("RS_SERVER").unwrap_or("").to_owned());
+    pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new("rustdesk.grupond.com.br".to_owned());
     pub static ref EXE_RENDEZVOUS_SERVER: RwLock<String> = Default::default();
-    pub static ref APP_NAME: RwLock<String> = RwLock::new(option_env!("APP_NAME").unwrap_or("RustDesk").to_owned());
+    pub static ref APP_NAME: RwLock<String> = RwLock::new("Atendimento GrupoND".to_owned());
     static ref KEY_PAIR: Mutex<Option<KeyPair>> = Default::default();
     static ref USER_DEFAULT_CONFIG: RwLock<(UserDefaultConfig, Instant)> = RwLock::new((UserDefaultConfig::load(), Instant::now()));
     pub static ref NEW_STORED_PEER_CONFIG: Mutex<HashSet<String>> = Default::default();
@@ -106,11 +106,8 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
-pub static RS_PUB_KEY: &str = match option_env!("RS_PUB_KEY") {
-    Some(v) => v,
-    None => "05Q9aFxELHvLZ4ZF4IxFyBq1rYjIvf2xV5j7qcKYrJQ=",
-};
+pub static ref RENDEZVOUS_SERVERS: &[&str] = &["rustdesk.grupond.com.br"];
+pub static RS_PUB_KEY: &str = "05Q9aFxELHvLZ4ZF4IxFyBq1rYjIvf2xV5j7qcKYrJQ=";
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
 pub const RELAY_PORT: i32 = 21117;
@@ -2492,23 +2489,12 @@ fn is_option_can_save(
 
 #[inline]
 pub fn is_incoming_only() -> bool {
-    if option_env!("RS_INCOMING_ONLY").is_some() {
-        return true;
-    }
-    HARD_SETTINGS
-        .read()
-        .unwrap()
-        .get("conn-type")
-        .map_or(false, |x| x == ("incoming"))
+    true
 }
 
 #[inline]
 pub fn is_outgoing_only() -> bool {
-    HARD_SETTINGS
-        .read()
-        .unwrap()
-        .get("conn-type")
-        .map_or(false, |x| x == ("outgoing"))
+    false
 }
 
 #[inline]
@@ -2527,28 +2513,23 @@ fn is_some_hard_opton(name: &str) -> bool {
 }
 
 #[inline]
-pub fn is_disable_tcp_listen() -> bool {
-    is_some_hard_opton("disable-tcp-listen")
-}
-
-#[inline]
 pub fn is_disable_settings() -> bool {
-    is_some_hard_opton("disable-settings")
+    true
 }
 
 #[inline]
 pub fn is_disable_ab() -> bool {
-    is_some_hard_opton("disable-ab")
+    true
 }
 
 #[inline]
 pub fn is_disable_account() -> bool {
-    is_some_hard_opton("disable-account")
+    true
 }
 
 #[inline]
 pub fn is_disable_installation() -> bool {
-    is_some_hard_opton("disable-installation")
+    true
 }
 
 // This function must be kept the same as the one in flutter and sciter code.
