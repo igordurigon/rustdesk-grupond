@@ -187,7 +187,12 @@ jobs:
             }" > /workspace/vcpkg.json
             
             # Build dependencies with vcpkg using the manifest and overlays
-            $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed" --overlay-ports=/workspace/res/vcpkg
+            if [ "${{ matrix.job.arch }}" == "armv7" ]; then
+              echo "Running 32-bit vcpkg install for armv7..."
+              linux32 $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed" --overlay-ports=/workspace/res/vcpkg
+            else
+              $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed" --overlay-ports=/workspace/res/vcpkg
+            fi
 
             # Build Logic
             cd /workspace
