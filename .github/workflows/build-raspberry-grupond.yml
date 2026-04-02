@@ -119,6 +119,7 @@ jobs:
                ninja-build \
                pkg-config \
                python3 \
+               python3-pip \
                rpm \
                unzip \
                zip \
@@ -130,6 +131,9 @@ jobs:
           run: |
             # Fix git safe directory
             git config --global --add safe.directory "*"
+            
+            # Install a newer Ninja via pip to satisfy vcpkg and avoid aarch64 downloads
+            pip3 install ninja
             
             # Limit vcpkg concurrency to avoid OOM in QEMU
             export VCPKG_MAX_CONCURRENCY=2
