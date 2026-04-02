@@ -125,7 +125,8 @@ jobs:
                wget \
                xz-utils \
                libssl-dev \
-               sudo
+               sudo \
+               util-linux
           run: |
             # Fix git safe directory
             git config --global --add safe.directory "*"
@@ -140,26 +141,24 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${{ env.RUST_VERSION }}
             source $HOME/.cargo/env
             
-            # Setup vcpkg (downloading prebuilt binary to avoid bootstrap failure in QEMU)
+            # Setup vcpkg
             export VCPKG_ROOT=/opt/vcpkg
             git clone https://github.com/microsoft/vcpkg $VCPKG_ROOT
             pushd $VCPKG_ROOT
             git reset --hard ${{ env.VCPKG_COMMIT_ID }}
             
-            # Use official bootstrap
-            ./bootstrap-vcpkg.sh -disableMetrics
+            # Use official bootstrap with architecture awareness
+            if [ "${{ matrix.job.arch }}" == "armv7" ]; then
+              echo "Forcing 32-bit bootstrap for armv7..."
+              linux32 ./bootstrap-vcpkg.sh -disableMetrics
+            else
+              ./bootstrap-vcpkg.sh -disableMetrics
+            fi
             
-            # Fallback for vcpkg binary detection/download
-            if [ ! -f "$VCPKG_ROOT/vcpkg" ]; then
-              echo "Bootstrap failed to create binary, attempting architecture-specific download..."
-              ARCH_NAME=$(uname -m)
-              if [ "$ARCH_NAME" == "aarch64" ]; then
-                VCPKG_TOOL_URL="https://github.com/microsoft/vcpkg-tool/releases/latest/download/vcpkg"
-              else
-                # Default to latest, or handle other ARM versions
-                VCPKG_TOOL_URL="https://github.com/microsoft/vcpkg-tool/releases/latest/download/vcpkg" 
-              fi
-              wget -O $VCPKG_ROOT/vcpkg $VCPKG_TOOL_URL || echo "Manual download failed"
+            # Fallback for vcpkg binary (mostly for arm64)
+            if [ ! -f "$VCPKG_ROOT/vcpkg" ] && [ "${{ matrix.job.arch }}" == "aarch64" ]; then
+              echo "Bootstrap failed, attempting manual download for arm64..."
+              wget -O $VCPKG_ROOT/vcpkg https://github.com/microsoft/vcpkg-tool/releases/latest/download/vcpkg
               chmod +x $VCPKG_ROOT/vcpkg
             fi
             popd
