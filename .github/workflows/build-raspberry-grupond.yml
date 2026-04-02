@@ -83,6 +83,13 @@ jobs:
 
       - uses: rustdesk-org/run-on-arch-action@amd64-support
         name: Build within QEMU Container
+        env:
+          APP_NAME: ${{ env.APP_NAME }}
+          RS_SERVER: ${{ env.RS_SERVER }}
+          RS_PUB_KEY: ${{ env.RS_PUB_KEY }}
+          RS_INCOMING_ONLY: ${{ env.RS_INCOMING_ONLY }}
+          RS_DISABLE_SETTINGS: ${{ env.RS_DISABLE_SETTINGS }}
+          RS_HIDE_NETWORK: ${{ env.RS_HIDE_NETWORK }}
         with:
           arch: ${{ matrix.job.arch }}
           distro: ubuntu22.04

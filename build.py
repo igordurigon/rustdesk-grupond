@@ -306,8 +306,10 @@ def get_features(args):
 def generate_control_file(version):
     control_file_path = "../res/DEBIAN/control"
     system2('/bin/rm -rf %s' % control_file_path)
+    
+    app_name = os.environ.get("APP_NAME", "rustdesk")
 
-    content = """Package: rustdesk
+    content = """Package: %s
 Section: net
 Priority: optional
 Version: %s
@@ -318,7 +320,7 @@ Depends: libgtk-3-0, libxcb-randr0, libxdo3 | libxdo4, libxfixes3, libxcb-shape0
 Recommends: libayatana-appindicator3-1
 Description: A remote control software.
 
-""" % (version, get_deb_arch(), get_deb_extra_depends())
+""" % (app_name.lower().replace(" ", "-"), version, get_deb_arch(), get_deb_extra_depends())
     file = open(control_file_path, "w")
     file.write(content)
     file.close()
@@ -363,6 +365,12 @@ def build_flutter_deb(version, features):
         'cp ../res/rustdesk.desktop tmpdeb/usr/share/applications/rustdesk.desktop')
     system2(
         'cp ../res/rustdesk-link.desktop tmpdeb/usr/share/applications/rustdesk-link.desktop')
+    
+    # Update application name and icon in .desktop file
+    app_name = os.environ.get("APP_NAME", "RustDesk")
+    system2(f"sed -i 's/^Name=.*/Name={app_name}/g' tmpdeb/usr/share/applications/rustdesk.desktop")
+    # system2(f"sed -i 's/^Icon=.*/Icon={app_name.lower().replace(\" \", \"-\")}/g' tmpdeb/usr/share/applications/rustdesk.desktop")
+    
     system2(
         'cp ../res/startwm.sh tmpdeb/etc/rustdesk/')
     system2(
