@@ -38,8 +38,8 @@ pub fn core_main() -> Option<Vec<String>> {
         // return None to terminate the process
         return None;
     }
-    let mut args = Vec::new();
-    let mut flutter_args = Vec::new();
+    let mut args: Vec<String> = Vec::new();
+    let mut flutter_args: Vec<String> = Vec::new();
     let mut i = 0;
     let mut _is_elevate = false;
     let mut _is_run_as_system = false;
