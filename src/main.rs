@@ -7,13 +7,25 @@ use librustdesk::*;
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
 fn main() {
-    if !common::global_init() {
-        eprintln!("Global initialization failed.");
-        return;
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        if !common::global_init() {
+            eprintln!("Global initialization failed.");
+            return;
+        }
+        common::test_rendezvous_server();
+        common::test_nat_type();
+        common::global_clean();
     }
-    common::test_rendezvous_server();
-    common::test_nat_type();
-    common::global_clean();
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        if let Some(args) = crate::core_main::core_main().as_mut() {
+            // If core_main returns Some, it means we should start the UI (Flutter)
+            // But for service/server commands, core_main will handle them and return None (exit)
+            // In Flutter version on Desktop, the actual UI start is handled by the Flutter engine
+            // so we don't call ui::start(args) here like in Sciter version.
+        }
+    }
 }
 
 #[cfg(not(any(
