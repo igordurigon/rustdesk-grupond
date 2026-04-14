@@ -106,7 +106,7 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["rustdesk.grupond.com.br"];
+pub const RENDEZVOUS_SERVERS: &[&str] = &["rustdesk.grupond.tv.br"];
 pub const RS_PUB_KEY: &str = "05Q9aFxELHvLZ4ZF4IxFyBq1rYjIvf2xV5j7qcKYrJQ=";
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
@@ -2510,6 +2510,11 @@ fn is_some_hard_opton(name: &str) -> bool {
         .unwrap()
         .get(name)
         .map_or(false, |x| x == ("Y"))
+}
+
+#[inline]
+pub fn is_disable_tcp_listen() -> bool {
+    true
 }
 
 #[inline]
