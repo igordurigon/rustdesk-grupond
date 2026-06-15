@@ -224,6 +224,15 @@ jobs:
           sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
+      - name: Ad-hoc codesign app
+        shell: bash
+        run: |
+          # Sem conta Apple: assinatura ad-hoc. Obrigatória no Apple Silicon,
+          # senão o binário ARM é morto silenciosamente ("clico e nada acontece").
+          APP=./flutter/build/macos/Build/Products/Release/RustDesk.app
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP" || true
+
       - name: Create unsigned dmg
         shell: bash
         run: |
