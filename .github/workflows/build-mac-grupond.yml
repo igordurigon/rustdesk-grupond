@@ -184,7 +184,8 @@ jobs:
           flutter_rust_bridge_codegen \
             --rust-input ./src/flutter_ffi.rs \
             --dart-output ./flutter/lib/generated_bridge.dart \
-            --rust-output ./src/bridge_generated.rs
+            --rust-output ./src/bridge_generated.rs \
+            --c-output ./flutter/macos/Runner/bridge_generated.h
 
       - name: Build rustdesk
         shell: bash
