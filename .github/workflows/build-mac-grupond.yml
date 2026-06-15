@@ -127,6 +127,33 @@ jobs:
           targets: ${{ matrix.job.target }}
           components: rustfmt
 
+      - name: Prepare vcpkg manifest (macOS)
+        shell: bash
+        run: |
+          # Em macOS removemos os codecs de GPU x86 (amd-amf / ffnvcodec / mfx-dispatch
+          # e as features amf/nvcodec/qsv do ffmpeg), não suportados em osx.
+          cat > vcpkg.json <<'EOF'
+          {
+            "dependencies": [
+              "aom",
+              "libjpeg-turbo",
+              "opus",
+              "libvpx",
+              "libyuv",
+              "ffmpeg"
+            ],
+            "vcpkg-configuration": {
+              "default-registry": {
+                "kind": "builtin",
+                "baseline": "120deac3062162151622ca4860575a33844ba10b"
+              },
+              "overlay-ports": [
+                "./res/vcpkg"
+              ]
+            }
+          }
+          EOF
+
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
         with:
