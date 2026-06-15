@@ -41,7 +41,9 @@ jobs:
               os: macos-14,
               arch: aarch64,
               vcpkg-triplet: arm64-osx,
-              extra-build-args: "--screencapturekit",
+              # sem --screencapturekit: permite rodar em macOS 11.0 (Big Sur);
+              # ScreenCaptureKit exige 12.3+
+              extra-build-args: "",
             }
           - {
               target: x86_64-apple-darwin,
@@ -210,7 +212,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
-            MIN_MACOS_VERSION="12.3"
+            MIN_MACOS_VERSION="11.0"
             sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
             sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
             sed -i -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
