@@ -1,0 +1,281 @@
+name: Build GrupoND Linux Versions
+
+# Builds nativos (sem QEMU):
+#   - amd64  -> runner ubuntu-22.04        (PCs/notebooks Linux comuns)  [confiável]
+#   - arm64  -> runner ubuntu-22.04-arm    (Raspberry Pi com SO 64-bit)  [flutter-elinux]
+# Gera pacotes .deb para Debian/Ubuntu/Mint/Raspberry Pi OS.
+# Obs.: o Flutter oficial não tem SDK para ARM64 Linux; no arm64 usamos
+# o fork flutter-elinux (Sony), igual ao build oficial do RustDesk.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rs_server:
+        description: 'Endereço do Servidor ID/Relay'
+        required: true
+        default: 'rustdesk.grupond.tv.br'
+      rs_key:
+        description: 'Chave Pública do Servidor (Public Key)'
+        required: false
+        default: '05Q9aFxELHvLZ4ZF4IxFyBq1rYjIvf2xV5j7qcKYrJQ='
+
+env:
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CARGO_EXPAND_VERSION: "1.0.95"
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
+
+jobs:
+  build-linux:
+    name: Build Linux ${{ matrix.job.deb_arch }} (${{ matrix.version }})
+    runs-on: ${{ matrix.job.on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [client]
+        job:
+          - {
+              arch: x86_64,
+              target: x86_64-unknown-linux-gnu,
+              on: ubuntu-22.04,
+              deb_arch: amd64,
+              vcpkg-triplet: x64-linux,
+            }
+          - {
+              arch: aarch64,
+              target: aarch64-unknown-linux-gnu,
+              on: ubuntu-22.04-arm,
+              deb_arch: arm64,
+              vcpkg-triplet: arm64-linux,
+            }
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Maximize build space
+        run: |
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          df -h
+
+      - name: Set Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 12
+
+      - name: Set Environment Variables
+        shell: bash
+        run: |
+          if [ "${{ matrix.version }}" == "client" ]; then
+            echo "APP_NAME=Atendimento GrupoND" >> $GITHUB_ENV
+            echo "RS_INCOMING_ONLY=1" >> $GITHUB_ENV
+            echo "RS_DISABLE_SETTINGS=1" >> $GITHUB_ENV
+            echo "OUTPUT_NAME=Atendimento_GrupoND" >> $GITHUB_ENV
+          else
+            echo "APP_NAME=Admin GrupoND" >> $GITHUB_ENV
+            echo "RS_HIDE_NETWORK=1" >> $GITHUB_ENV
+            echo "OUTPUT_NAME=Admin_GrupoND" >> $GITHUB_ENV
+          fi
+          echo "RS_SERVER=${{ github.event.inputs.rs_server }}" >> $GITHUB_ENV
+          if [ "${{ github.event.inputs.rs_key }}" != "" ]; then
+            echo "RS_PUB_KEY=${{ github.event.inputs.rs_key }}" >> $GITHUB_ENV
+          fi
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            cmake \
+            curl \
+            gcc \
+            g++ \
+            git \
+            libayatana-appindicator3-dev \
+            libasound2-dev \
+            libclang-14-dev \
+            libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev \
+            libgtk-3-dev \
+            libpam0g-dev \
+            libpulse-dev \
+            libva-dev \
+            libxcb-randr0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxdo-dev \
+            libxfixes-dev \
+            libjpeg-dev \
+            llvm-14-dev \
+            nasm \
+            ninja-build \
+            pkg-config \
+            python3 \
+            python3-pip \
+            rpm \
+            tree \
+            unzip \
+            wget \
+            xz-utils \
+            zip \
+            libssl-dev
+          # libopus é compilado pelo vcpkg; remove o do sistema para evitar conflito
+          sudo apt-get remove -y libopus-dev || true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: ${{ matrix.job.target }}
+          components: rustfmt
+
+      # ---- Flutter (amd64): SDK oficial ----
+      - name: Install Flutter (amd64)
+        if: matrix.job.arch == 'x86_64'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Patch Flutter (amd64)
+        if: matrix.job.arch == 'x86_64'
+        shell: bash
+        run: |
+          cd "$(dirname "$(dirname "$(which flutter)")")"
+          if [ "${{ env.FLUTTER_VERSION }}" == "3.24.5" ]; then
+            git apply "${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff" || true
+          fi
+
+      # ---- Flutter (arm64): flutter-elinux + flutter oficial só p/ shader_lib ----
+      - name: Install Flutter (arm64 / flutter-elinux)
+        if: matrix.job.arch == 'aarch64'
+        shell: bash
+        run: |
+          pushd /opt
+          # Flutter oficial (x64) é baixado apenas para extrair o shader_lib,
+          # que o engine arm64 não inclui.
+          sudo wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
+          sudo tar xf flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
+          sudo git clone https://github.com/sony/flutter-elinux.git
+          sudo chown -R "$(whoami)" /opt/flutter-elinux /opt/flutter
+          pushd flutter-elinux
+            git config --global --add safe.directory /opt/flutter-elinux
+            git fetch
+            git reset --hard ${{ env.FLUTTER_VERSION }}
+            bin/flutter-elinux precache --linux
+          popd
+          cp -R flutter/bin/cache/artifacts/engine/linux-x64/shader_lib \
+                flutter-elinux/flutter/bin/cache/artifacts/engine/linux-arm64/ || true
+          # aplica o patch do dropdown na cópia de flutter usada pelo elinux
+          if [ "${{ env.FLUTTER_VERSION }}" == "3.24.5" ]; then
+            pushd /opt/flutter-elinux/flutter
+              git config --global --add safe.directory /opt/flutter-elinux/flutter
+              git apply "${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff" || true
+            popd
+          fi
+          # remove o flutter x64 (não roda em arm64), já extraímos o shader_lib
+          sudo rm -rf /opt/flutter
+          popd
+          # expõe flutter-elinux e o flutter empacotado para os próximos steps
+          echo "/opt/flutter-elinux/bin" >> $GITHUB_PATH
+          echo "/opt/flutter-elinux/flutter/bin" >> $GITHUB_PATH
+          # no build.py, troca o comando de build para flutter-elinux
+          sed -i "s/flutter build linux --release/flutter-elinux build linux --verbose/g" ./build.py
+
+      - name: Prepare vcpkg manifest (ARM)
+        if: matrix.job.arch == 'aarch64'
+        shell: bash
+        run: |
+          # No ARM removemos os codecs específicos de x86 (Intel QSV / NVIDIA / AMD)
+          cat > vcpkg.json <<'EOF'
+          {
+            "dependencies": [
+              "aom",
+              "libjpeg-turbo",
+              "opus",
+              "libvpx",
+              "libyuv",
+              "ffmpeg"
+            ],
+            "vcpkg-configuration": {
+              "default-registry": {
+                "kind": "builtin",
+                "baseline": "120deac3062162151622ca4860575a33844ba10b"
+              },
+              "overlay-ports": [
+                "./res/vcpkg"
+              ]
+            }
+          }
+          EOF
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: /opt/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        shell: bash
+        env:
+          VCPKG_FORCE_SYSTEM_BINARIES: ${{ matrix.job.arch == 'aarch64' && '1' || '' }}
+        run: |
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --triplet ${{ matrix.job.vcpkg-triplet }} \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r f; do
+              echo "$f:"; echo "======"; cat "$f"; echo "======"; echo ""
+            done
+            exit 1
+          fi
+
+      - name: Generate Flutter Rust Bridge
+        shell: bash
+        run: |
+          cargo install cargo-expand --version ${{ env.CARGO_EXPAND_VERSION }} --locked
+          cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid" --locked
+          pushd flutter
+          flutter pub get
+          popd
+          flutter_rust_bridge_codegen \
+            --rust-input ./src/flutter_ffi.rs \
+            --dart-output ./flutter/lib/generated_bridge.dart \
+            --rust-output ./src/bridge_generated.rs
+
+      - name: Build
+        shell: bash
+        env:
+          VCPKG_ROOT: /opt/vcpkg
+          BUILD_ARCH: ${{ matrix.job.arch }}
+          DEB_ARCH: ${{ matrix.job.deb_arch }}
+        run: |
+          export CARGO_INCREMENTAL=0
+          python3 build.py --flutter --hwcodec
+
+      - name: Rename .deb
+        shell: bash
+        run: |
+          deb=$(ls rustdesk-*.deb | head -n1)
+          mv "$deb" "${{ env.OUTPUT_NAME }}_${{ matrix.job.deb_arch }}.deb"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUTPUT_NAME }}_${{ matrix.job.deb_arch }}
+          path: ${{ env.OUTPUT_NAME }}_${{ matrix.job.deb_arch }}.deb

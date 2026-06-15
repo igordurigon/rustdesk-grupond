@@ -6,7 +6,7 @@ on:
       rs_server:
         description: 'Endereço do Servidor ID/Relay (ex: rustdesk.grupond.com.br)'
         required: true
-        default: 'rustdesk.grupond.com.br'
+        default: 'rustdesk.grupond.tv.br'
       rs_key:
         description: 'Chave Pública do Servidor (Public Key)'
         required: false
