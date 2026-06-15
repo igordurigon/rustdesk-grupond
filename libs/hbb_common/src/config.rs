@@ -58,7 +58,7 @@ lazy_static::lazy_static! {
     static ref ONLINE: Mutex<HashMap<String, i64>> = Default::default();
     pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new("rustdesk.grupond.tv.br".to_owned());
     pub static ref EXE_RENDEZVOUS_SERVER: RwLock<String> = Default::default();
-    pub static ref APP_NAME: RwLock<String> = RwLock::new("Atendimento GrupoND".to_owned());
+    pub static ref APP_NAME: RwLock<String> = RwLock::new(option_env!("APP_NAME").unwrap_or("Atendimento GrupoND").to_owned());
     static ref KEY_PAIR: Mutex<Option<KeyPair>> = Default::default();
     static ref USER_DEFAULT_CONFIG: RwLock<(UserDefaultConfig, Instant)> = RwLock::new((UserDefaultConfig::load(), Instant::now()));
     pub static ref NEW_STORED_PEER_CONFIG: Mutex<HashSet<String>> = Default::default();
@@ -2489,7 +2489,8 @@ fn is_option_can_save(
 
 #[inline]
 pub fn is_incoming_only() -> bool {
-    true
+    // client (Atendimento) compila com RS_INCOMING_ONLY; admin não -> pode conectar
+    option_env!("RS_INCOMING_ONLY").is_some()
 }
 
 #[inline]
@@ -2514,27 +2515,27 @@ fn is_some_hard_opton(name: &str) -> bool {
 
 #[inline]
 pub fn is_disable_tcp_listen() -> bool {
-    true
+    option_env!("RS_INCOMING_ONLY").is_some()
 }
 
 #[inline]
 pub fn is_disable_settings() -> bool {
-    true
+    option_env!("RS_DISABLE_SETTINGS").is_some()
 }
 
 #[inline]
 pub fn is_disable_ab() -> bool {
-    true
+    option_env!("RS_DISABLE_SETTINGS").is_some()
 }
 
 #[inline]
 pub fn is_disable_account() -> bool {
-    true
+    option_env!("RS_DISABLE_SETTINGS").is_some()
 }
 
 #[inline]
 pub fn is_disable_installation() -> bool {
-    true
+    option_env!("RS_DISABLE_SETTINGS").is_some()
 }
 
 // This function must be kept the same as the one in flutter and sciter code.

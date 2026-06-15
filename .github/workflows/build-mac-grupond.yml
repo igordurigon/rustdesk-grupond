@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [client]
+        version: [client, admin]
         job:
           - {
               target: aarch64-apple-darwin,
