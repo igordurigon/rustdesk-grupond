@@ -215,8 +215,9 @@ jobs:
             # mínimo absoluto de Macs Apple Silicon
             MIN_MACOS_VERSION="11.0"
           else
-            # Intel: cobre parque antigo até macOS 10.13 (High Sierra)
-            MIN_MACOS_VERSION="10.13"
+            # Intel: 10.14 (Mojave) é o piso REAL — o Flutter força o mínimo
+            # para 10.14, então 10.13 (High Sierra) não é suportado.
+            MIN_MACOS_VERSION="10.14"
           fi
           sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
           sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
