@@ -119,17 +119,30 @@ jobs:
       - name: Prepare vcpkg manifest (Android)
         shell: bash
         run: |
-          # Remove codecs específicos de x86 (Intel QSV / NVIDIA / AMD), não
-          # suportados em arm64-android — senão o vcpkg aborta no mfx-dispatch.
+          # Manifesto do upstream com qualificadores de plataforma: para
+          # arm64-android traz oboe + cpu-features (oboe fornece liboboe e
+          # libndk_compat exigidos pelo build.rs) e exclui mfx-dispatch e as
+          # features de GPU x86 do ffmpeg via platform.
           cat > vcpkg.json <<'EOF'
           {
             "dependencies": [
-              "aom",
-              "libjpeg-turbo",
-              "opus",
-              "libvpx",
-              "libyuv",
-              "ffmpeg"
+              { "name": "aom", "host": true },
+              { "name": "aom", "host": false },
+              { "name": "cpu-features", "platform": "android" },
+              { "name": "libjpeg-turbo", "host": true },
+              { "name": "libjpeg-turbo", "host": false },
+              { "name": "oboe", "platform": "android" },
+              { "name": "opus", "host": true },
+              { "name": "opus", "host": false },
+              { "name": "libvpx", "host": true },
+              { "name": "libvpx", "host": false },
+              { "name": "libyuv", "host": true },
+              { "name": "libyuv", "host": false },
+              {
+                "name": "ffmpeg",
+                "host": false,
+                "platform": "((android | ios | (linux & arm32)) & static)"
+              }
             ],
             "vcpkg-configuration": {
               "default-registry": {
