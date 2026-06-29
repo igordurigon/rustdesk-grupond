@@ -1,0 +1,183 @@
+name: Build GrupoND Android Versions
+
+# Gera APK (variante Admin = controlador) para o time de TI conectar
+# nas máquinas a partir do celular/tablet. Assinatura DEBUG (instala via
+# "fontes desconhecidas", sem precisar de conta/keystore). Foco em arm64-v8a,
+# que cobre praticamente todos os celulares modernos.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rs_server:
+        description: 'Endereço do Servidor ID/Relay'
+        required: true
+        default: 'rustdesk.grupond.tv.br'
+      rs_key:
+        description: 'Chave Pública do Servidor (Public Key)'
+        required: false
+        default: '05Q9aFxELHvLZ4ZF4IxFyBq1rYjIvf2xV5j7qcKYrJQ='
+
+env:
+  RUST_VERSION: "1.75"
+  CARGO_NDK_VERSION: "3.1.2"
+  ANDROID_FLUTTER_VERSION: "3.24.5"
+  NDK_VERSION: "r27c"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CARGO_EXPAND_VERSION: "1.0.95"
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
+
+jobs:
+  build-android:
+    name: Build Android ${{ matrix.job.arch }} (${{ matrix.version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [admin]
+        job:
+          - {
+              arch: aarch64,
+              target: aarch64-linux-android,
+              android_target: arm64-v8a,
+              platform: android-arm64,
+            }
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: true
+          swap-storage: false
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake curl gcc-multilib git g++ g++-multilib \
+            libayatana-appindicator3-dev libasound2-dev libc6-dev \
+            libclang-dev libunwind-dev libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev libgtk-3-dev libpam0g-dev \
+            libpulse-dev libva-dev libxcb-randr0-dev libxcb-shape0-dev \
+            libxcb-xfixes0-dev libxdo-dev libxfixes-dev llvm-dev nasm \
+            ninja-build openjdk-17-jdk-headless pkg-config tree wget
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Environment Variables
+        shell: bash
+        run: |
+          # Variante Admin (controlador): pode conectar; aba de rede oculta
+          echo "APP_NAME=Admin GrupoND" >> $GITHUB_ENV
+          echo "RS_HIDE_NETWORK=1" >> $GITHUB_ENV
+          echo "OUTPUT_NAME=Admin_GrupoND" >> $GITHUB_ENV
+          echo "RS_SERVER=${{ github.event.inputs.rs_server }}" >> $GITHUB_ENV
+          if [ "${{ github.event.inputs.rs_key }}" != "" ]; then
+            echo "RS_PUB_KEY=${{ github.event.inputs.rs_key }}" >> $GITHUB_ENV
+          fi
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
+
+      - name: Patch Flutter
+        run: |
+          cd "$(dirname "$(dirname "$(which flutter)")")"
+          if [ "${{ env.ANDROID_FLUTTER_VERSION }}" == "3.24.5" ]; then
+            git apply "${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff" || true
+          fi
+
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: /opt/artifacts/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies (Android)
+        shell: bash
+        run: |
+          if ! ./flutter/build_android_deps.sh "${{ matrix.job.android_target }}"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r f; do
+              echo "$f:"; echo "======"; cat "$f"; echo "======"; echo ""
+            done
+            exit 1
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+
+      - name: Generate Flutter Rust Bridge
+        shell: bash
+        run: |
+          cargo install cargo-expand --version ${{ env.CARGO_EXPAND_VERSION }} --locked
+          cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid" --locked
+          pushd flutter
+          flutter pub get
+          popd
+          flutter_rust_bridge_codegen \
+            --rust-input ./src/flutter_ffi.rs \
+            --dart-output ./flutter/lib/generated_bridge.dart \
+            --rust-output ./src/bridge_generated.rs
+
+      - name: Build rustdesk lib
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          rustup target add ${{ matrix.job.target }}
+          cargo install cargo-ndk --version ${{ env.CARGO_NDK_VERSION }} --locked
+          ./flutter/ndk_arm64.sh
+          mkdir -p ./flutter/android/app/src/main/jniLibs/${{ matrix.job.android_target }}
+          cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so \
+             ./flutter/android/app/src/main/jniLibs/${{ matrix.job.android_target }}/librustdesk.so
+
+      - name: Build APK
+        shell: bash
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
+          # mais memória pro Gradle no CI
+          sed -i "s/org.gradle.jvmargs=-Xmx1024M/org.gradle.jvmargs=-Xmx2g/g" ./flutter/android/gradle.properties
+          # usa assinatura debug (sem keystore/secrets)
+          sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
+          cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so \
+             ./flutter/android/app/src/main/jniLibs/${{ matrix.job.android_target }}/
+          pushd flutter
+          flutter build apk --release --target-platform ${{ matrix.job.platform }} --split-per-abi
+          popd
+          mv flutter/build/app/outputs/flutter-apk/app-${{ matrix.job.android_target }}-release.apk \
+             "${{ env.OUTPUT_NAME }}_${{ matrix.job.android_target }}.apk"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUTPUT_NAME }}_android_${{ matrix.job.android_target }}
+          path: ${{ env.OUTPUT_NAME }}_${{ matrix.job.android_target }}.apk
