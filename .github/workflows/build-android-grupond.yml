@@ -116,6 +116,33 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
+      - name: Prepare vcpkg manifest (Android)
+        shell: bash
+        run: |
+          # Remove codecs específicos de x86 (Intel QSV / NVIDIA / AMD), não
+          # suportados em arm64-android — senão o vcpkg aborta no mfx-dispatch.
+          cat > vcpkg.json <<'EOF'
+          {
+            "dependencies": [
+              "aom",
+              "libjpeg-turbo",
+              "opus",
+              "libvpx",
+              "libyuv",
+              "ffmpeg"
+            ],
+            "vcpkg-configuration": {
+              "default-registry": {
+                "kind": "builtin",
+                "baseline": "120deac3062162151622ca4860575a33844ba10b"
+              },
+              "overlay-ports": [
+                "./res/vcpkg"
+              ]
+            }
+          }
+          EOF
+
       - name: Install vcpkg dependencies (Android)
         shell: bash
         run: |
